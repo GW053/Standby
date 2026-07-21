@@ -1,0 +1,2311 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7dfbd">
+  <title>陪伴小屋</title>
+  <style>
+    :root {
+      --ink: #5f3e31;
+      --ink-soft: #9c6f61;
+      --wall: #fff0cf;
+      --wall-deep: #f8d88c;
+      --floor: #eec07d;
+      --floor-line: rgba(122, 80, 56, .22);
+      --mint: #9fd6b1;
+      --blue: #9dccd9;
+      --pink: #f5b8c8;
+      --rose: #c97893;
+      --orange: #ed9f52;
+      --cream: #fff9e8;
+      --card: rgba(255, 251, 238, .94);
+      --shadow: 0 16px 36px rgba(76, 48, 31, .16);
+      --line: 2px solid rgba(95, 62, 49, .78);
+      --char-x: 47%;
+      --char-y: 56%;
+      --char-scale: 1;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      color-scheme: light;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-width: 320px;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #fbebd1;
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .app {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      width: 100%;
+      height: 100dvh;
+      padding: calc(10px + var(--safe-top)) 10px calc(10px + var(--safe-bottom));
+      background:
+        linear-gradient(180deg, rgba(255, 245, 222, .92), rgba(251, 226, 190, .96)),
+        radial-gradient(circle at 20% 8%, rgba(255, 255, 255, .75), transparent 30%);
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 8px;
+      min-height: 54px;
+      padding: 8px 10px;
+      border: var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: 0 8px 18px rgba(76, 48, 31, .08);
+    }
+
+    .title strong {
+      display: block;
+      font-size: 18px;
+      letter-spacing: .04em;
+    }
+
+    .title span,
+    .hud-chip span,
+    .small-note {
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .hud-right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .hud-chip {
+      display: grid;
+      place-items: center;
+      min-width: 58px;
+      min-height: 36px;
+      padding: 4px 8px;
+      border: var(--line);
+      border-radius: 12px;
+      background: #fff;
+      font-weight: 900;
+      line-height: 1.1;
+      box-shadow: inset 0 -4px 0 rgba(238, 192, 125, .18);
+    }
+
+    .scene-wrap {
+      position: relative;
+      min-height: 0;
+      border: var(--line);
+      border-radius: 22px;
+      overflow: hidden;
+      background: #fff7db;
+      box-shadow: var(--shadow);
+      touch-action: manipulation;
+    }
+
+    .room {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, var(--wall) 0 57%, var(--floor) 57% 100%);
+    }
+
+    .room::before {
+      position: absolute;
+      right: -14%;
+      bottom: -18%;
+      width: 86%;
+      height: 54%;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .18);
+      content: "";
+    }
+
+    .wainscot {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 48%;
+      height: 10%;
+      border-top: var(--line);
+      border-bottom: var(--line);
+      background:
+        repeating-linear-gradient(90deg, transparent 0 34px, rgba(95, 62, 49, .14) 35px 37px),
+        #cdebc2;
+      opacity: .9;
+    }
+
+    .floor-grid {
+      position: absolute;
+      left: -20%;
+      right: -20%;
+      bottom: -10%;
+      height: 44%;
+      transform: perspective(460px) rotateX(58deg);
+      transform-origin: bottom center;
+      background:
+        repeating-linear-gradient(90deg, transparent 0 58px, var(--floor-line) 59px 61px),
+        repeating-linear-gradient(0deg, transparent 0 46px, var(--floor-line) 47px 49px);
+    }
+
+    .scallop {
+      position: absolute;
+      left: -6%;
+      top: -3px;
+      width: 112%;
+      height: 28px;
+      background:
+        radial-gradient(circle at 20px 0, transparent 20px, var(--pink) 21px 23px, transparent 24px) 0 0 / 48px 28px repeat-x,
+        #ffe6ef;
+      border-bottom: var(--line);
+      opacity: .72;
+    }
+
+    .window {
+      position: absolute;
+      left: 36%;
+      top: 9%;
+      width: 31%;
+      height: 34%;
+      border: 4px solid #875f3f;
+      border-radius: 14px 14px 10px 10px;
+      background:
+        radial-gradient(circle at 68% 20%, #fff7ab 0 7px, transparent 8px),
+        linear-gradient(180deg, #bde8f0 0 56%, #a6d17e 56% 100%);
+      box-shadow: inset 0 0 0 4px rgba(255, 252, 229, .72);
+    }
+
+    .window::before,
+    .window::after {
+      position: absolute;
+      background: #875f3f;
+      content: "";
+    }
+
+    .window::before {
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      transform: translateX(-50%);
+    }
+
+    .window::after {
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 4px;
+      transform: translateY(-50%);
+    }
+
+    .curtain {
+      position: absolute;
+      top: 7%;
+      width: 8%;
+      height: 34%;
+      border: var(--line);
+      border-radius: 14px 14px 28px 28px;
+      background:
+        repeating-linear-gradient(90deg, rgba(117, 184, 200, .25) 0 7px, transparent 8px 16px),
+        #fff8e6;
+      z-index: 1;
+    }
+
+    .curtain.left { left: 31%; transform: rotate(2deg); }
+    .curtain.right { left: 64%; transform: rotate(-2deg); }
+
+    .door {
+      position: absolute;
+      left: 4%;
+      top: 23%;
+      width: 16%;
+      height: 35%;
+      border: var(--line);
+      border-radius: 34px 34px 8px 8px;
+      background: #ffd6e4;
+      box-shadow: inset 0 0 0 8px rgba(255, 255, 255, .28);
+    }
+
+    .door::before {
+      position: absolute;
+      right: 18%;
+      top: 50%;
+      width: 11px;
+      height: 11px;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: #fff2a6;
+      content: "";
+    }
+
+    .door::after {
+      position: absolute;
+      left: 18%;
+      top: -14px;
+      width: 64%;
+      height: 24px;
+      border: var(--line);
+      border-bottom: 0;
+      border-radius: 24px 24px 0 0;
+      background: #fff;
+      content: "";
+    }
+
+    .bed {
+      position: absolute;
+      left: 22%;
+      top: 45%;
+      width: 35%;
+      height: 23%;
+      border: var(--line);
+      border-radius: 26px 26px 18px 18px;
+      background: #fff7e8;
+      box-shadow: inset 0 -14px 0 rgba(239, 162, 92, .16), 0 12px 0 rgba(95, 62, 49, .09);
+      z-index: 2;
+    }
+
+    .bed::before {
+      position: absolute;
+      left: 8%;
+      top: -22%;
+      width: 28%;
+      height: 34%;
+      border: var(--line);
+      border-radius: 14px;
+      background: #ffbf7c;
+      transform: rotate(-6deg);
+      content: "";
+    }
+
+    .bed::after {
+      position: absolute;
+      right: 9%;
+      top: -18%;
+      width: 25%;
+      height: 32%;
+      border: var(--line);
+      border-radius: 14px;
+      background: #ffd76f;
+      transform: rotate(7deg);
+      content: "";
+    }
+
+    .blanket {
+      position: absolute;
+      left: 12%;
+      right: 7%;
+      bottom: 7%;
+      height: 42%;
+      border: var(--line);
+      border-radius: 22px;
+      background:
+        repeating-linear-gradient(135deg, transparent 0 14px, rgba(255, 255, 255, .36) 15px 25px),
+        #f5c6c8;
+    }
+
+    .desk {
+      position: absolute;
+      right: 5%;
+      top: 43%;
+      width: 28%;
+      height: 18%;
+      border: var(--line);
+      border-radius: 12px;
+      background: #d49b5b;
+      z-index: 2;
+    }
+
+    .desk::before,
+    .desk::after {
+      position: absolute;
+      bottom: -41%;
+      width: 12%;
+      height: 42%;
+      border: var(--line);
+      border-radius: 0 0 8px 8px;
+      background: #b77e4e;
+      content: "";
+    }
+
+    .desk::before { left: 10%; }
+    .desk::after { right: 10%; }
+
+    .desk-top {
+      position: absolute;
+      left: 5%;
+      right: 5%;
+      top: 14%;
+      height: 24%;
+      border: var(--line);
+      border-radius: 10px;
+      background: #fff6d8;
+    }
+
+    .lamp {
+      position: absolute;
+      right: 12%;
+      top: 20%;
+      width: 8%;
+      height: 24%;
+      z-index: 1;
+    }
+
+    .lamp::before {
+      position: absolute;
+      left: 32%;
+      bottom: 0;
+      width: 8px;
+      height: 58%;
+      border-radius: 8px;
+      background: var(--ink);
+      content: "";
+    }
+
+    .lamp::after {
+      position: absolute;
+      right: 0;
+      top: 4%;
+      width: 50px;
+      height: 33px;
+      border: var(--line);
+      border-radius: 28px 28px 8px 8px;
+      background: #ff9b62;
+      box-shadow: 0 12px 24px rgba(255, 190, 82, .5);
+      content: "";
+    }
+
+    .shelf {
+      position: absolute;
+      left: 20%;
+      top: 17%;
+      width: 13%;
+      height: 23%;
+      border: var(--line);
+      border-radius: 12px;
+      background:
+        linear-gradient(180deg, transparent 44%, var(--ink) 45% 48%, transparent 49%),
+        #ffd985;
+      z-index: 1;
+    }
+
+    .shelf span,
+    .tiny-book {
+      position: absolute;
+      bottom: 10%;
+      width: 11%;
+      height: 34%;
+      border: 2px solid var(--ink);
+      border-radius: 3px;
+      background: #80c0b3;
+    }
+
+    .shelf span:nth-child(1) { left: 15%; background: #ee7f75; }
+    .shelf span:nth-child(2) { left: 30%; background: #6db0d1; height: 42%; }
+    .shelf span:nth-child(3) { left: 47%; background: #f7f0ad; }
+    .shelf span:nth-child(4) { left: 67%; background: #89c878; height: 39%; }
+
+    .plant {
+      position: absolute;
+      right: 4%;
+      bottom: 8%;
+      width: 15%;
+      height: 22%;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .pot {
+      position: absolute;
+      left: 26%;
+      bottom: 0;
+      width: 45%;
+      height: 30%;
+      border: var(--line);
+      border-radius: 0 0 16px 16px;
+      background: #d8835c;
+    }
+
+    .leaf {
+      position: absolute;
+      width: 38%;
+      height: 26%;
+      border: var(--line);
+      border-radius: 50% 4px 50% 4px;
+      background: #69b36b;
+    }
+
+    .leaf.a { left: 12%; top: 26%; transform: rotate(-25deg); }
+    .leaf.b { left: 44%; top: 14%; transform: rotate(28deg); }
+    .leaf.c { left: 34%; top: 38%; transform: rotate(8deg); }
+    .leaf.d { left: 58%; top: 34%; transform: rotate(38deg); }
+    .leaf.e { left: 18%; top: 48%; transform: rotate(-52deg); }
+
+    .rug {
+      position: absolute;
+      left: 31%;
+      bottom: 6%;
+      width: 38%;
+      height: 23%;
+      border: var(--line);
+      border-radius: 50%;
+      background:
+        radial-gradient(ellipse at center, rgba(255, 255, 255, .5) 0 24%, transparent 25%),
+        repeating-radial-gradient(ellipse at center, transparent 0 18px, rgba(255, 255, 255, .35) 20px 27px),
+        #ffd986;
+      z-index: 1;
+    }
+
+    .tea-table {
+      position: absolute;
+      left: 38%;
+      bottom: 17%;
+      width: 22%;
+      height: 11%;
+      border: var(--line);
+      border-radius: 50%;
+      background: #c9854f;
+      z-index: 3;
+    }
+
+    .tea-table::before,
+    .tea-table::after {
+      position: absolute;
+      bottom: -28%;
+      width: 12%;
+      height: 33%;
+      border: 2px solid var(--ink);
+      border-radius: 6px;
+      background: #a76c44;
+      content: "";
+    }
+
+    .tea-table::before { left: 18%; }
+    .tea-table::after { right: 18%; }
+
+    .plate {
+      position: absolute;
+      top: 28%;
+      width: 16%;
+      height: 24%;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .plate.one { left: 18%; }
+    .plate.two { left: 43%; }
+    .plate.three { right: 18%; }
+
+    .door-mat {
+      position: absolute;
+      left: 5%;
+      bottom: 12%;
+      width: 16%;
+      height: 9%;
+      border: var(--line);
+      border-radius: 50%;
+      background: #b6dbd1;
+      z-index: 2;
+    }
+
+    .wall-dots {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 14% 17%, rgba(201, 120, 147, .22) 0 5px, transparent 6px),
+        radial-gradient(circle at 75% 14%, rgba(201, 120, 147, .2) 0 4px, transparent 5px),
+        radial-gradient(circle at 87% 31%, rgba(201, 120, 147, .18) 0 4px, transparent 5px),
+        radial-gradient(circle at 28% 47%, rgba(255, 255, 255, .38) 0 7px, transparent 8px);
+      pointer-events: none;
+    }
+
+    .outdoor-hint {
+      position: absolute;
+      left: 2%;
+      right: 2%;
+      bottom: -36%;
+      height: 35%;
+      border-top: var(--line);
+      background:
+        radial-gradient(ellipse at 22% 62%, rgba(89, 161, 95, .18) 0 14%, transparent 15%),
+        repeating-linear-gradient(12deg, transparent 0 30px, rgba(77, 145, 67, .18) 32px 35px),
+        #cbe992;
+      transition: bottom .55s ease;
+      z-index: 0;
+    }
+
+    .scene-wrap.outdoor .outdoor-hint {
+      bottom: 0;
+    }
+
+    .scene-wrap.outdoor .door {
+      transform: rotateY(-22deg);
+      transform-origin: left center;
+      background: #f7bdcf;
+    }
+
+    .scene-wrap.outdoor .room {
+      background:
+        linear-gradient(180deg, #d7f0f4 0 43%, var(--wall) 43% 57%, var(--floor) 57% 100%);
+    }
+
+    .scene-wrap.water .window {
+      background:
+        linear-gradient(180deg, #b9eef4 0 50%, #8ed4e4 50% 100%);
+    }
+
+    .avatar {
+      position: absolute;
+      left: var(--char-x);
+      top: var(--char-y);
+      width: 84px;
+      height: 112px;
+      transform: translate(-50%, -50%) scale(var(--char-scale));
+      transform-origin: center bottom;
+      transition:
+        left 1.15s cubic-bezier(.22, .9, .32, 1),
+        top 1.15s cubic-bezier(.22, .9, .32, 1),
+        transform 1.15s cubic-bezier(.22, .9, .32, 1);
+      z-index: 5;
+      filter: drop-shadow(0 12px 10px rgba(80, 52, 38, .18));
+    }
+
+    .avatar.walking {
+      animation: tinyWalk .72s ease-in-out 2;
+    }
+
+    .avatar::after {
+      position: absolute;
+      left: 17%;
+      right: 17%;
+      bottom: -6px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(92, 61, 43, .18);
+      content: "";
+    }
+
+    .head {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 72px;
+      height: 66px;
+      transform: translateX(-50%);
+      border: var(--line);
+      border-radius: 45% 45% 43% 43%;
+      background:
+        radial-gradient(circle at 24% 62%, #ffb8b6 0 6px, transparent 7px),
+        radial-gradient(circle at 76% 62%, #ffb8b6 0 6px, transparent 7px),
+        #fff8df;
+      z-index: 3;
+    }
+
+    .hair {
+      position: absolute;
+      left: 50%;
+      top: -4px;
+      width: 76px;
+      height: 44px;
+      transform: translateX(-50%);
+      border: var(--line);
+      border-bottom: 0;
+      border-radius: 44px 44px 20px 20px;
+      background: #8a5a44;
+      z-index: 4;
+    }
+
+    .ear {
+      position: absolute;
+      top: 25px;
+      width: 17px;
+      height: 20px;
+      border: var(--line);
+      border-radius: 50%;
+      background: #fff3d8;
+      z-index: 2;
+    }
+
+    .ear.left { left: -3px; }
+    .ear.right { right: -3px; }
+
+    .eye {
+      position: absolute;
+      top: 34px;
+      width: 6px;
+      height: 14px;
+      border-radius: 50%;
+      background: #2f2522;
+      z-index: 5;
+    }
+
+    .eye.left { left: 28px; }
+    .eye.right { right: 28px; }
+
+    .mouth {
+      position: absolute;
+      left: 50%;
+      top: 50px;
+      width: 16px;
+      height: 8px;
+      transform: translateX(-50%);
+      border-bottom: 2px solid #7b5148;
+      border-radius: 50%;
+      z-index: 5;
+    }
+
+    .body {
+      position: absolute;
+      left: 50%;
+      top: 58px;
+      width: 45px;
+      height: 46px;
+      transform: translateX(-50%);
+      border: var(--line);
+      border-radius: 18px 18px 14px 14px;
+      background: #9ecad3;
+      z-index: 2;
+    }
+
+    .arm,
+    .leg {
+      position: absolute;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #fff3d8;
+      z-index: 1;
+      transition: transform .35s ease, left .35s ease, right .35s ease, top .35s ease;
+    }
+
+    .arm {
+      top: 64px;
+      width: 14px;
+      height: 36px;
+    }
+
+    .arm.left { left: 15px; transform: rotate(18deg); }
+    .arm.right { right: 15px; transform: rotate(-18deg); }
+
+    .leg {
+      top: 96px;
+      width: 16px;
+      height: 31px;
+      background: #ffe4c8;
+    }
+
+    .leg.left { left: 29px; transform: rotate(8deg); }
+    .leg.right { right: 29px; transform: rotate(-8deg); }
+
+    .avatar.pose-read,
+    .avatar.pose-draw,
+    .avatar.pose-study,
+    .avatar.pose-cook {
+      --char-scale: .95;
+    }
+
+    .avatar.pose-read .arm.left,
+    .avatar.pose-study .arm.left,
+    .avatar.pose-draw .arm.left {
+      left: 18px;
+      transform: rotate(72deg);
+    }
+
+    .avatar.pose-read .arm.right,
+    .avatar.pose-study .arm.right,
+    .avatar.pose-draw .arm.right {
+      right: 18px;
+      transform: rotate(-72deg);
+    }
+
+    .avatar.pose-sleep {
+      --char-scale: .98;
+      transform: translate(-50%, -50%) scale(var(--char-scale)) rotate(-78deg);
+    }
+
+    .avatar.pose-sleep .eye {
+      height: 2px;
+      top: 40px;
+    }
+
+    .avatar.pose-sleep .mouth {
+      width: 9px;
+      height: 9px;
+      border: 2px solid #7b5148;
+      border-top: 0;
+    }
+
+    .avatar.pose-exercise .arm.left,
+    .avatar.pose-run .arm.left {
+      transform: rotate(-62deg);
+      top: 60px;
+    }
+
+    .avatar.pose-exercise .arm.right,
+    .avatar.pose-run .arm.right {
+      transform: rotate(62deg);
+      top: 60px;
+    }
+
+    .avatar.pose-run .leg.left {
+      transform: rotate(-35deg);
+    }
+
+    .avatar.pose-run .leg.right {
+      transform: rotate(35deg);
+    }
+
+    .avatar.pose-shy .arm.left,
+    .avatar.pose-shy .arm.right {
+      top: 70px;
+      height: 24px;
+    }
+
+    .avatar.pose-shy .arm.left {
+      left: 26px;
+      transform: rotate(112deg);
+    }
+
+    .avatar.pose-shy .arm.right {
+      right: 26px;
+      transform: rotate(-112deg);
+    }
+
+    .avatar.pose-hygiene .arm.right {
+      right: 20px;
+      top: 54px;
+      transform: rotate(-122deg);
+    }
+
+    .prop {
+      position: absolute;
+      display: none;
+      z-index: 8;
+      pointer-events: none;
+    }
+
+    .prop.book {
+      left: 50%;
+      top: 73px;
+      width: 54px;
+      height: 32px;
+      transform: translateX(-50%);
+      border: var(--line);
+      border-radius: 4px 4px 10px 10px;
+      background:
+        linear-gradient(90deg, #fff 0 48%, var(--ink) 49% 52%, #fff7cc 53% 100%);
+    }
+
+    .prop.bowl {
+      left: 50%;
+      top: 82px;
+      width: 42px;
+      height: 24px;
+      transform: translateX(-50%);
+      border: var(--line);
+      border-radius: 0 0 24px 24px;
+      background: #fff;
+    }
+
+    .prop.brush {
+      right: 2px;
+      top: 44px;
+      width: 28px;
+      height: 9px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #b5e3ef;
+      transform: rotate(-28deg);
+    }
+
+    .prop.paper {
+      left: 16px;
+      top: 78px;
+      width: 58px;
+      height: 36px;
+      border: var(--line);
+      border-radius: 5px;
+      background:
+        linear-gradient(135deg, transparent 0 55%, rgba(237, 159, 82, .45) 56% 59%, transparent 60%),
+        #fff;
+      transform: rotate(-4deg);
+    }
+
+    .prop.dumbbell {
+      left: 50%;
+      top: 85px;
+      width: 58px;
+      height: 12px;
+      transform: translateX(-50%) rotate(-10deg);
+      background:
+        linear-gradient(90deg, var(--ink) 0 18%, #fff 19% 82%, var(--ink) 83% 100%);
+      border-radius: 999px;
+    }
+
+    .prop.bike {
+      left: -30px;
+      top: 58px;
+      width: 90px;
+      height: 48px;
+    }
+
+    .prop.bike::before,
+    .prop.bike::after {
+      position: absolute;
+      bottom: 0;
+      width: 30px;
+      height: 30px;
+      border: 4px solid var(--ink);
+      border-radius: 50%;
+      background: transparent;
+      content: "";
+    }
+
+    .prop.bike::before { left: 0; }
+    .prop.bike::after { right: 0; }
+
+    .prop.bike span {
+      position: absolute;
+      left: 24px;
+      top: 21px;
+      width: 42px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--ink);
+      transform: rotate(-18deg);
+    }
+
+    .prop.swim {
+      left: 52%;
+      top: 71px;
+      width: 42px;
+      height: 18px;
+      transform: translateX(-50%);
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: rgba(157, 204, 217, .48);
+    }
+
+    .prop.mop {
+      right: 0;
+      top: 56px;
+      width: 8px;
+      height: 65px;
+      border-radius: 999px;
+      background: var(--ink);
+      transform: rotate(-22deg);
+    }
+
+    .pose-read .prop.book,
+    .pose-study .prop.book,
+    .pose-eat .prop.bowl,
+    .pose-cook .prop.bowl,
+    .pose-hygiene .prop.brush,
+    .pose-draw .prop.paper,
+    .pose-exercise .prop.dumbbell,
+    .pose-run .prop.dumbbell,
+    .pose-bike .prop.bike,
+    .pose-swim .prop.swim,
+    .pose-tidy .prop.mop {
+      display: block;
+    }
+
+    .speech {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 12;
+      display: grid;
+      gap: 6px;
+      padding: 12px 14px;
+      border: var(--line);
+      border-radius: 16px;
+      background: rgba(255, 251, 238, .95);
+      box-shadow: 0 12px 26px rgba(76, 48, 31, .14);
+    }
+
+    .speech small {
+      color: var(--rose);
+      font-weight: 900;
+    }
+
+    .speech p {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 850;
+      line-height: 1.55;
+    }
+
+    .bottom {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      min-height: 180px;
+      max-height: 38dvh;
+      border: var(--line);
+      border-radius: 18px;
+      background: var(--card);
+      box-shadow: 0 -8px 18px rgba(76, 48, 31, .08);
+      overflow: hidden;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      padding: 8px;
+      border-bottom: 2px solid rgba(95, 62, 49, .22);
+      background: rgba(255, 255, 255, .35);
+    }
+
+    .tabs button {
+      min-height: 38px;
+      border: 2px solid rgba(95, 62, 49, .36);
+      border-radius: 12px;
+      background: #fff7db;
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .tabs button.active {
+      border-color: var(--ink);
+      background: #ffca6b;
+      color: var(--ink);
+      box-shadow: inset 0 -4px 0 rgba(132, 83, 45, .16);
+    }
+
+    .panel {
+      display: none;
+      min-height: 0;
+      padding: 12px;
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    .round-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .progress-track {
+      height: 14px;
+      border: 2px solid rgba(95, 62, 49, .5);
+      border-radius: 999px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #9fd6b1, #ffca6b, #f5b8c8);
+      transition: width .3s linear;
+    }
+
+    .action-name {
+      font-weight: 950;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .stat,
+    .skill,
+    .shop-card,
+    .review-card,
+    .setting-card {
+      border: 2px solid rgba(95, 62, 49, .34);
+      border-radius: 14px;
+      background: #fffdf2;
+      box-shadow: inset 0 -5px 0 rgba(238, 192, 125, .12);
+    }
+
+    .stat,
+    .skill {
+      padding: 9px;
+    }
+
+    .stat-head,
+    .skill-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 7px;
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .mini-bar {
+      height: 9px;
+      border-radius: 999px;
+      background: #f0dfbd;
+      overflow: hidden;
+    }
+
+    .mini-bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: #80c0b3;
+    }
+
+    .stat.low .mini-bar span {
+      background: #e98a7c;
+    }
+
+    .stat.high .mini-bar span {
+      background: #8ecb73;
+    }
+
+    .hint {
+      display: block;
+      margin-top: 5px;
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .shop-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .shop-card {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .shop-card strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .shop-card p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .shop-card .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .tag {
+      padding: 3px 6px;
+      border: 1px solid rgba(95, 62, 49, .35);
+      border-radius: 999px;
+      background: #fff7db;
+      color: var(--ink-soft);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .buy {
+      min-height: 34px;
+      border: var(--line);
+      border-radius: 10px;
+      background: #9fd6b1;
+      font-weight: 950;
+      box-shadow: inset 0 -4px 0 rgba(68, 130, 86, .18);
+    }
+
+    .buy:disabled {
+      background: #eee0c7;
+      color: #9b8776;
+      box-shadow: none;
+    }
+
+    .review-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .review-card,
+    .setting-card {
+      padding: 10px;
+    }
+
+    .review-card strong,
+    .setting-card strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .review-card p,
+    .setting-card p {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .soft-button {
+      min-height: 36px;
+      padding: 0 12px;
+      border: var(--line);
+      border-radius: 10px;
+      background: #fff7db;
+      font-weight: 900;
+    }
+
+    .danger {
+      background: #ffb0a5;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      place-items: center;
+      padding: 18px;
+      background: rgba(75, 47, 35, .42);
+    }
+
+    .modal.show {
+      display: grid;
+    }
+
+    .modal-card {
+      position: relative;
+      width: min(430px, 100%);
+      padding: 20px;
+      border: var(--line);
+      border-radius: 18px;
+      background: #fffaf0;
+      box-shadow: var(--shadow);
+    }
+
+    .modal-card h2 {
+      margin: 0 42px 10px 0;
+      font-size: 22px;
+    }
+
+    .modal-card p {
+      margin: 0;
+      color: var(--ink-soft);
+      line-height: 1.7;
+    }
+
+    .close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: var(--line);
+      border-radius: 50%;
+      background: #ffd6e4;
+      font-size: 24px;
+      font-weight: 950;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(18px + var(--safe-bottom));
+      z-index: 50;
+      max-width: calc(100% - 28px);
+      padding: 10px 13px;
+      border: var(--line);
+      border-radius: 999px;
+      background: #fff7db;
+      font-size: 13px;
+      font-weight: 900;
+      transform: translateX(-50%) translateY(90px);
+      transition: transform .28s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @keyframes tinyWalk {
+      0%, 100% { margin-top: 0; }
+      35% { margin-top: -9px; }
+      65% { margin-top: -3px; }
+    }
+
+    @media (orientation: landscape) and (max-height: 560px) {
+      .app {
+        grid-template-columns: minmax(0, 1fr) minmax(340px, 36vw);
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      .hud {
+        grid-column: 1 / -1;
+      }
+
+      .bottom {
+        max-height: none;
+        min-height: 0;
+      }
+    }
+
+    @media (min-width: 860px) {
+      .app {
+        width: min(1040px, 100%);
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .scene-wrap {
+        border-radius: 26px;
+      }
+
+      .speech p {
+        font-size: 16px;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .app {
+        padding-right: 7px;
+        padding-left: 7px;
+        gap: 7px;
+      }
+
+      .hud {
+        grid-template-columns: 1fr;
+      }
+
+      .hud-right {
+        justify-content: stretch;
+      }
+
+      .hud-chip {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .tabs {
+        gap: 4px;
+        padding: 6px;
+      }
+
+      .tabs button {
+        min-height: 34px;
+        font-size: 12px;
+      }
+
+      .grid,
+      .shop-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .avatar {
+        width: 74px;
+        height: 102px;
+      }
+    }
+
+    /* Room image + bunny character override. The generated room stays as the
+       single background asset; the bunny remains animated in HTML/CSS. */
+    .scene-wrap {
+      background: #fffaf1 url("assets/room-background.png") center / 100% 100% no-repeat;
+    }
+
+    .room {
+      display: none;
+    }
+
+    .scene-wrap.outdoor,
+    .scene-wrap.water {
+      background-image:
+        linear-gradient(rgba(255, 250, 241, .12), rgba(255, 250, 241, .12)),
+        url("assets/room-background.png");
+    }
+
+    .scene-wrap.outdoor::after,
+    .scene-wrap.water::after {
+      position: absolute;
+      left: 11%;
+      bottom: 8%;
+      z-index: 4;
+      padding: 7px 10px;
+      border: 2px solid rgba(95, 62, 49, .68);
+      border-radius: 999px;
+      background: rgba(255, 251, 238, .88);
+      color: var(--ink-soft);
+      font-size: 12px;
+      font-weight: 900;
+      content: "准备出门";
+    }
+
+    .scene-wrap.water::after {
+      content: "游泳包";
+    }
+
+    .avatar {
+      width: 92px;
+      height: 124px;
+      filter: drop-shadow(0 10px 8px rgba(80, 52, 38, .2));
+    }
+
+    .hair {
+      display: none;
+    }
+
+    .head {
+      top: 9px;
+      width: 66px;
+      height: 58px;
+      border-color: #6b4a3a;
+      border-radius: 46% 46% 43% 43%;
+      background:
+        radial-gradient(circle at 22% 63%, #ffb7bd 0 6px, transparent 7px),
+        radial-gradient(circle at 78% 63%, #ffb7bd 0 6px, transparent 7px),
+        #fffdf4;
+    }
+
+    .ear {
+      top: -44px;
+      width: 19px;
+      height: 56px;
+      border-color: #6b4a3a;
+      border-radius: 999px 999px 14px 14px;
+      background: #fffdf4;
+      z-index: 1;
+      transform-origin: bottom center;
+    }
+
+    .ear::after {
+      position: absolute;
+      inset: 8px 4px 12px;
+      border-radius: inherit;
+      background: #ffc4d1;
+      content: "";
+    }
+
+    .ear.left {
+      left: 13px;
+      transform: rotate(-14deg);
+    }
+
+    .ear.right {
+      right: 13px;
+      transform: rotate(14deg);
+    }
+
+    .eye {
+      top: 31px;
+      width: 7px;
+      height: 10px;
+      background: #49352f;
+    }
+
+    .eye.left { left: 25px; }
+    .eye.right { right: 25px; }
+
+    .mouth {
+      top: 45px;
+      width: 13px;
+      height: 7px;
+      border-color: #8b5c52;
+    }
+
+    .body {
+      top: 63px;
+      width: 48px;
+      height: 48px;
+      border-color: #6b4a3a;
+      border-radius: 19px 19px 17px 17px;
+      background:
+        linear-gradient(180deg, transparent 0 38%, #b7ddbd 39% 51%, transparent 52%),
+        #fffdf4;
+    }
+
+    .body::after {
+      position: absolute;
+      right: -15px;
+      bottom: 9px;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #6b4a3a;
+      border-radius: 50%;
+      background: #fffdf4;
+      content: "";
+    }
+
+    .arm,
+    .leg {
+      border-color: #6b4a3a;
+      background: #fffdf4;
+    }
+
+    .arm {
+      top: 71px;
+      height: 34px;
+    }
+
+    .arm.left { left: 18px; }
+    .arm.right { right: 18px; }
+
+    .leg {
+      top: 104px;
+      background: #fff6ed;
+    }
+
+    .avatar.pose-sleep .ear.left,
+    .avatar.pose-sleep .ear.right {
+      transform: rotate(82deg);
+    }
+
+    .avatar.pose-sleep .eye {
+      height: 2px;
+      top: 36px;
+    }
+
+    .prop.book,
+    .prop.paper {
+      border-color: #6b4a3a;
+      box-shadow: 0 3px 0 rgba(95, 62, 49, .12);
+    }
+
+    @media (max-width: 390px) {
+      .avatar {
+        width: 78px;
+        height: 106px;
+      }
+
+      .scene-wrap.outdoor::after,
+      .scene-wrap.water::after {
+        left: 8%;
+        bottom: 7%;
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="app" class="app">
+    <header class="hud">
+      <div class="title">
+        <strong>陪伴小屋</strong>
+        <span id="ageText">第 1 天 · 第 1/12 段</span>
+      </div>
+      <div class="hud-right">
+        <div class="hud-chip"><b id="statusText">挂机中</b><span>状态</span></div>
+        <div class="hud-chip"><b id="timerText">10:00</b><span>本轮</span></div>
+        <div class="hud-chip"><b id="goldText">60</b><span>金币</span></div>
+      </div>
+    </header>
+
+    <section id="sceneWrap" class="scene-wrap" aria-label="主角房间">
+      <div class="room">
+        <div class="scallop"></div>
+        <div class="wall-dots"></div>
+        <div class="window"></div>
+        <div class="curtain left"></div>
+        <div class="curtain right"></div>
+        <div class="wainscot"></div>
+        <div class="floor-grid"></div>
+        <div class="outdoor-hint"></div>
+        <div class="door"></div>
+        <div class="shelf"><span></span><span></span><span></span><span></span></div>
+        <div class="bed"><div class="blanket"></div></div>
+        <div class="desk"><div class="desk-top"></div></div>
+        <div class="lamp"></div>
+        <div class="rug"></div>
+        <div class="tea-table"><span class="plate one"></span><span class="plate two"></span><span class="plate three"></span></div>
+        <div class="door-mat"></div>
+        <div class="plant"><span class="leaf a"></span><span class="leaf b"></span><span class="leaf c"></span><span class="leaf d"></span><span class="leaf e"></span><span class="pot"></span></div>
+      </div>
+
+      <div id="avatar" class="avatar pose-read">
+        <div class="hair"></div>
+        <div class="head">
+          <span class="ear left"></span>
+          <span class="ear right"></span>
+          <span class="eye left"></span>
+          <span class="eye right"></span>
+          <span class="mouth"></span>
+        </div>
+        <div class="body"></div>
+        <span class="arm left"></span>
+        <span class="arm right"></span>
+        <span class="leg left"></span>
+        <span class="leg right"></span>
+        <span class="prop book"></span>
+        <span class="prop bowl"></span>
+        <span class="prop brush"></span>
+        <span class="prop paper"></span>
+        <span class="prop dumbbell"></span>
+        <span class="prop bike"><span></span></span>
+        <span class="prop swim"></span>
+        <span class="prop mop"></span>
+      </div>
+
+      <div class="speech">
+        <small id="actionLabel">现在：读几页书</small>
+        <p id="lineText">你先别切走，我看完这一页就给你汇报。</p>
+      </div>
+    </section>
+
+    <section class="bottom">
+      <nav class="tabs" aria-label="游戏面板">
+        <button class="active" data-tab="now">当前</button>
+        <button data-tab="stats">状态</button>
+        <button data-tab="skills">等级</button>
+        <button data-tab="shop">商店</button>
+        <button data-tab="review">回顾</button>
+      </nav>
+
+      <div id="panel-now" class="panel active">
+        <div class="round-row">
+          <div>
+            <div class="action-name" id="currentActionName">读几页书</div>
+            <span class="small-note" id="currentActionNote">完成后自动进入下一轮</span>
+          </div>
+          <button class="soft-button" id="wakeButton">亮屏</button>
+        </div>
+        <div class="progress-track" aria-label="本轮进度"><div id="roundFill" class="progress-fill"></div></div>
+        <p class="small-note" style="margin:10px 0 0;">今天陪伴 <b id="todayMinutes">0 分钟</b>，开始挂机 <b id="todayStarts">1</b> 次。切出去会弹窗提醒，不扣东西。</p>
+      </div>
+
+      <div id="panel-stats" class="panel">
+        <div id="statsGrid" class="grid"></div>
+      </div>
+
+      <div id="panel-skills" class="panel">
+        <div id="skillsGrid" class="grid"></div>
+      </div>
+
+      <div id="panel-shop" class="panel">
+        <div id="shopGrid" class="shop-grid"></div>
+      </div>
+
+      <div id="panel-review" class="panel">
+        <div class="button-row" style="margin:0 0 10px;">
+          <button class="soft-button" id="fullscreenButton">占满屏幕</button>
+          <button class="soft-button danger" id="resetButton">重置存档</button>
+        </div>
+        <div id="reviewList" class="review-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="挂机中断提示">
+    <div class="modal-card">
+      <button id="closeModal" class="close" aria-label="关闭提示">×</button>
+      <h2>她停下来了</h2>
+      <p>刚刚页面不在前台，这一段没算进去。关掉这个提示后，她会重新开始一个新的十分钟。</p>
+      <p style="margin-top:10px;"><b>“你回来了就好。别走太久，我真的会卡住。”</b></p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <script>
+    const ROUND_MS = 10 * 60 * 1000;
+    const ROUND_MINUTES = 10;
+    const DAY_ROUNDS = 12;
+    const STORE_KEY = "companion-room-html-v1";
+
+    const zones = {
+      center: { x: 49, y: 69, scale: .98 },
+      bed: { x: 25, y: 65, scale: 1 },
+      desk: { x: 78, y: 64, scale: .9 },
+      rug: { x: 49, y: 78, scale: .95 },
+      door: { x: 84, y: 76, scale: .88 },
+      shelf: { x: 82, y: 44, scale: .82 },
+      table: { x: 73, y: 66, scale: .88 },
+      plant: { x: 47, y: 45, scale: .84 },
+      window: { x: 50, y: 38, scale: .82 }
+    };
+
+    const statMeta = [
+      ["satiety", "饱腹", "想吃点东西", "吃饱了"],
+      ["energy", "精力", "有点困", "精神不错"],
+      ["cleanliness", "清洁", "该洗漱了", "清清爽爽"],
+      ["mood", "心情", "想被哄一下", "心情还行"],
+      ["focus", "专注", "脑子有点散", "坐得住"],
+      ["inspiration", "灵感", "没什么想法", "有点想试试"]
+    ];
+
+    const skillMeta = [
+      ["health", "健康"],
+      ["study", "学习"],
+      ["cooking", "厨艺"],
+      ["drawing", "绘画"],
+      ["reading", "阅读"],
+      ["tidying", "整理"],
+      ["craft", "手作"],
+      ["music", "音乐"]
+    ];
+
+    const softLines = [
+      "你在就行，我不挑。真的。",
+      "你别切走，我会一下子泄气。",
+      "我刚刚想偷懒，看到你还在就忍住了。",
+      "再陪我十分钟嘛，我把这件事做完。",
+      "我有点黏你，先声明一下。",
+      "你不用一直盯着我，但不要离开这个页面。",
+      "你在这里，我就比较像个会好好生活的人。",
+      "我喜欢你把注意力放在我这里的时候。",
+      "别的小窗先不要开，好不好，就十分钟。",
+      "我知道这听起来很黏，但我真的需要你陪。",
+      "你陪着，我就不太想把今天弄得乱七八糟。",
+      "等这轮结束，我想听你夸我一句。",
+      "你刚刚还在吗？在的话我就继续。",
+      "我没什么大出息，先把这十分钟过好。",
+      "你要是一直在，我会偷偷开心很久。",
+      "今天也让我借一点你的注意力吧。"
+    ];
+
+    const actions = [
+      { id:"read", name:"读几页书", group:"reading", zone:"desk", pose:"pose-read", scene:"room", skill:"reading", xp:10, weight:10, effects:{focus:5,inspiration:4,mood:2,energy:-5,satiety:-4,cleanliness:-2},
+        lines:["你先别切走，我看完这一页就给你汇报。","这页我看三遍了，终于进脑子里一点。","我把手放在书上了，跑不掉了。"],
+        after:["我读完几页了，有一句写得还挺好。","书合上的时候，我有一点点踏实。"] },
+      { id:"study", name:"整理笔记", group:"study", zone:"desk", pose:"pose-study", scene:"room", skill:"study", xp:12, weight:10, effects:{focus:8,inspiration:2,mood:-1,energy:-8,satiety:-5,cleanliness:-2},
+        lines:["我开始写笔记了，你在的话我比较不想糊弄。","这块有点难，我先慢慢拆。","我不装懂，先把不会的圈起来。"],
+        after:["笔记多了一页，脑子也清楚了一点。","刚刚没有逃掉，算我赢一次。"] },
+      { id:"plan", name:"写今日小计划", group:"study", zone:"desk", pose:"pose-study", scene:"room", skill:"study", xp:7, weight:7, effects:{focus:7,inspiration:3,mood:3,energy:-3,satiety:-3},
+        lines:["我先写三件事，多了我会怕。","今天不要太贪心，能做一点是一点。","你帮我看着，我不要写完计划就跑路。"],
+        after:["计划写完了，今天好像没那么吓人。","我把事情切小块了，可以一口一口来。"] },
+      { id:"eat", name:"坐下吃饭", group:"meal", zone:"table", pose:"pose-eat", scene:"room", skill:"cooking", xp:5, weight:13, effects:{satiety:32,energy:4,mood:5,focus:-2,cleanliness:-2},
+        lines:["我会好好吃，不边刷手机边乱吞。","第一口给自己，第二口想分给你。","吃饭的时候有人陪，真的会比较香。"],
+        after:["吃饱了，整个人没那么飘了。","胃被安抚好了，我也安静一点。"] },
+      { id:"drink", name:"喝水", group:"drink", zone:"table", pose:"pose-eat", scene:"room", skill:"health", xp:3, weight:8, effects:{satiety:7,energy:3,mood:2,focus:2},
+        lines:["我喝水，你也喝一口。","咕嘟咕嘟，好了，我没那么干了。","杯子放这儿，你别走。"],
+        after:["喝完水，脑袋清醒一点。","一点小照顾也算照顾。"] },
+      { id:"wash", name:"洗脸刷牙", group:"hygiene", zone:"door", pose:"pose-hygiene", scene:"room", skill:"health", xp:5, weight:10, effects:{cleanliness:28,mood:4,focus:4,energy:-2,satiety:-3},
+        lines:["我去洗脸，很快回来，你别趁机跑掉。","牙刷已经拿起来了，今天不能糊弄。","水有点凉，但我醒了。"],
+        after:["洗完脸以后，整个人像重启了一下。","清清爽爽的，我比较愿意继续。"] },
+      { id:"shower", name:"洗个热水澡", group:"hygiene", zone:"door", pose:"pose-hygiene", scene:"room", skill:"health", xp:6, weight:7, effects:{cleanliness:40,mood:8,energy:-5,focus:2,satiety:-4},
+        lines:["我洗快一点，不让你等太久。","热水一开，心情就软下来了。","我会把自己洗得香香的。"],
+        after:["洗完澡了，困是困，但很舒服。","热气散掉以后，心也松一点。"] },
+      { id:"nap", name:"趴着小睡", group:"rest-light", zone:"bed", pose:"pose-sleep", scene:"room", skill:"health", xp:4, weight:8, effects:{energy:24,mood:5,focus:2,satiety:-4,cleanliness:-4},
+        lines:["我只趴一会儿，你别趁我睡着走。","小睡不是偷懒，是充电。","你在旁边，我比较容易睡着。"],
+        after:["醒了，脑袋没那么沉了。","刚刚睡得不久，但够我继续了。"] },
+      { id:"sleep", name:"认真睡一觉", group:"sleep", zone:"bed", pose:"pose-sleep", scene:"room", skill:"health", xp:6, weight:5, effects:{energy:45,mood:7,focus:4,satiety:-8,cleanliness:-7},
+        lines:["我要认真睡了，你守着我一下。","如果你还在，我会睡得比较安心。","我把被子盖好了。"],
+        after:["睡醒了，世界没那么重了。","这觉挺实在的，谢谢你没走。"] },
+      { id:"stare-window", name:"看窗外发呆", group:"quiet", zone:"window", pose:"pose-shy", scene:"room", weight:7, effects:{mood:7,inspiration:7,focus:-2,energy:2,satiety:-3},
+        lines:["我看一会儿窗外，心里太挤了。","外面也没什么特别的，但我想慢一点。","你在的话，发呆也不像掉线。"],
+        after:["我好像缓过来一点了。","窗外看完了，心里空出一点位置。"] },
+      { id:"tidy-desk", name:"整理桌面", group:"tidy", zone:"desk", pose:"pose-tidy", scene:"room", skill:"tidying", xp:10, weight:10, effects:{cleanliness:13,focus:7,mood:4,energy:-6,satiety:-4},
+        lines:["先把桌面收出来，不然我坐下就烦。","这张纸留着，那张丢掉。","你看，我真的有在动。"],
+        after:["桌面空了一块，脑子也空了一块。","我把乱糟糟按住了一点。"] },
+      { id:"clean-room", name:"扫地擦地", group:"tidy", zone:"rug", pose:"pose-tidy", scene:"room", skill:"tidying", xp:12, weight:8, effects:{cleanliness:18,mood:5,energy:-10,focus:4,satiety:-5},
+        lines:["我从地毯边边开始扫。","灰尘好多，之前我装没看见。","扫完我就可以理直气壮躺一下。"],
+        after:["地上干净了，脚踩上去都轻一点。","房间被我救回来一点点。"] },
+      { id:"stretch", name:"在地毯上拉伸", group:"exercise", zone:"rug", pose:"pose-exercise", scene:"room", skill:"health", xp:10, weight:10, effects:{energy:-7,mood:7,focus:4,cleanliness:-3,satiety:-4},
+        lines:["肩膀太僵了，我拉一下。","数到十我就换边，不偷懒。","这个动作酸酸的，但舒服。"],
+        after:["拉伸完，身体像被展开了。","不算很厉害，但我动了。"] },
+      { id:"draw", name:"画一张小草稿", group:"art", zone:"desk", pose:"pose-draw", scene:"room", skill:"drawing", xp:13, weight:8, item:"drawing-kit", effects:{inspiration:9,focus:5,mood:5,energy:-7,satiety:-4,cleanliness:-2},
+        lines:["线歪了，但我先不撕纸。","我画慢一点，你不要笑我。","这里想涂成暖黄色。"],
+        after:["草稿有点笨，但我还挺喜欢。","纸上多了一点东西，今天就没白过。"] },
+      { id:"color", name:"做配色练习", group:"art", zone:"desk", pose:"pose-draw", scene:"room", skill:"drawing", xp:11, weight:6, item:"drawing-kit", effects:{inspiration:12,mood:6,focus:3,energy:-5,satiety:-3},
+        lines:["这个粉色太甜了，我换淡一点。","颜色放在一起，会有脾气。","我想把今天调得软一点。"],
+        after:["配色卡看着很乖，我心情也乖一点。","颜色真的会哄人。"] },
+      { id:"cook-soup", name:"煮一小锅汤", group:"cook", zone:"table", pose:"pose-cook", scene:"room", skill:"cooking", xp:14, weight:7, item:"recipe-book", effects:{satiety:22,mood:8,energy:-8,cleanliness:-7,focus:3},
+        lines:["汤咕嘟咕嘟的时候，房间会变暖。","我会小心火候，不让它扑出来。","香味出来了，想叫你也闻一下。"],
+        after:["汤喝完，胃和心都暖了。","自己煮出来的东西就是有点骄傲。"] },
+      { id:"recipe", name:"研究食谱", group:"cook", zone:"desk", pose:"pose-read", scene:"room", skill:"cooking", xp:11, weight:7, item:"recipe-book", effects:{focus:6,inspiration:5,mood:3,energy:-4,satiety:-3},
+        lines:["食谱又写适量，适量到底是多少。","这个步骤看起来能试，我先记一下。","我想学会几个不会翻车的菜。"],
+        after:["我学到一点厨房里的小门道。","下次做饭应该更有把握。"] },
+      { id:"diary", name:"写日记", group:"journal", zone:"bed", pose:"pose-study", scene:"room", skill:"study", xp:8, weight:7, item:"diary", effects:{mood:8,focus:5,inspiration:5,energy:-4,satiety:-3},
+        lines:["我把今天写下来，不然它会散掉。","有些话我只写一点点，你不许偷看太多。","今天的标题就叫：你在。"],
+        after:["写完日记，心里被顺了一遍。","今天不是空白的，至少你陪过我。"] },
+      { id:"plant", name:"给小植物浇水", group:"plant", zone:"plant", pose:"pose-shy", scene:"room", skill:"tidying", xp:7, weight:6, item:"plant-pot", effects:{mood:7,inspiration:5,cleanliness:2,energy:-2,satiety:-2},
+        lines:["小叶子也要人陪，跟我一样。","我少浇一点，不能把它淹了。","它长得慢，但它在长。"],
+        after:["盆栽精神一点，我也精神一点。","照顾它的时候，我会变温柔。"] },
+      { id:"music", name:"戴耳机听歌", group:"music", zone:"bed", pose:"pose-shy", scene:"room", skill:"music", xp:10, weight:7, item:"headphones", effects:{mood:11,inspiration:6,focus:-1,energy:2,satiety:-2},
+        lines:["这首歌一响，我就没那么绷着了。","我把声音调小，只留一点点给自己。","这句歌词有点像我。"],
+        after:["听完歌以后，心情被擦干净一点。","旋律还在脑袋里绕。"] },
+      { id:"craft", name:"做纸艺小物", group:"craft", zone:"table", pose:"pose-draw", scene:"room", skill:"craft", xp:14, weight:6, item:"craft-box", effects:{inspiration:8,focus:5,mood:6,energy:-7,satiety:-3,cleanliness:-2},
+        lines:["我折慢一点，边要对齐。","这个小东西做出来应该会很可爱。","胶水别挤太多，之前翻车过。"],
+        after:["成品有点歪，但很像我做的。","十分钟折成了一个能留下来的东西。"] },
+      { id:"yoga", name:"做瑜伽", group:"exercise", zone:"rug", pose:"pose-exercise", scene:"room", skill:"health", xp:12, weight:7, item:"yoga-mat", effects:{energy:-8,mood:8,focus:6,cleanliness:-3,satiety:-4},
+        lines:["吸气，吐气，先别想别的。","动作不用漂亮，别憋气就行。","我把背伸开一点。"],
+        after:["做完以后，心没那么皱了。","这一轮很安静，我喜欢。"] },
+      { id:"run", name:"出门慢跑", group:"outdoor-run", zone:"door", pose:"pose-run", scene:"outdoor", skill:"health", xp:15, weight:7, item:"running-shoes", effects:{energy:-15,mood:10,focus:4,cleanliness:-8,satiety:-6,inspiration:2},
+        lines:["我跑慢点，不逞强。","跑到路口就回来，你别走。","风吹到脸上，脑子会安静一点。"],
+        after:["跑完有点喘，但挺痛快。","我真的动起来了，这个要记账。"] },
+      { id:"sprint", name:"短距离冲刺", group:"outdoor-run", zone:"door", pose:"pose-run", scene:"outdoor", skill:"health", xp:17, weight:4, item:"running-shoes", effects:{energy:-22,mood:8,focus:5,cleanliness:-10,satiety:-7},
+        lines:["我就冲一小段，不装高手。","三、二、一，跑！","你在我就不好意思半路停。"],
+        after:["腿有点软，但我刚刚真的很用力。","这一下冲得很痛快。"] },
+      { id:"bike", name:"骑单车兜一圈", group:"bike", zone:"door", pose:"pose-bike", scene:"outdoor", skill:"health", xp:16, weight:7, item:"bicycle", effects:{energy:-16,mood:11,inspiration:5,cleanliness:-7,satiety:-6},
+        lines:["我骑慢一点，风挺舒服的。","车铃很好听，我想再按一下。","路口转一圈就回来。"],
+        after:["骑完一圈，烦的东西被风带走一点。","单车真好，像把今天推远了一点。"] },
+      { id:"bike-care", name:"检查单车", group:"bike-care", zone:"door", pose:"pose-tidy", scene:"room", skill:"tidying", xp:9, weight:5, item:"bicycle", effects:{focus:5,mood:3,cleanliness:-2,energy:-3,satiety:-2},
+        lines:["刹车、轮胎、铃铛，都看一下。","照顾工具也算照顾自己。","我把链条擦干净一点。"],
+        after:["检查完了，下次出门更安心。","我的小单车可靠多了。"] },
+      { id:"swim", name:"去游泳", group:"swim", zone:"door", pose:"pose-swim", scene:"water", skill:"health", xp:18, weight:6, item:"swim-gear", effects:{energy:-18,mood:11,cleanliness:3,focus:4,satiety:-7},
+        lines:["我先练换气，不装高手。","水里很安静，我会注意安全。","游累了我就停，真的。"],
+        after:["游完以后身体累，心倒是清爽。","水把烦躁冲走了一点。"] },
+      { id:"jump-rope", name:"跳绳", group:"exercise", zone:"rug", pose:"pose-run", scene:"room", skill:"health", xp:15, weight:6, item:"jump-rope", effects:{energy:-16,mood:8,focus:5,cleanliness:-8,satiety:-6},
+        lines:["我数到一百，中间断了也继续。","绳子别打到脚，疼。","这个真的会出汗。"],
+        after:["跳完心跳很明显，我还挺得意。","汗出了，心情也通了。"] },
+      { id:"badminton", name:"打羽毛球", group:"ball", zone:"door", pose:"pose-run", scene:"outdoor", skill:"health", xp:16, weight:5, item:"badminton", effects:{energy:-17,mood:10,focus:6,cleanliness:-8,satiety:-6},
+        lines:["我努力接球，挥空也不许笑。","球飞起来的时候很轻，我也想轻一点。","这拍我一定碰到。"],
+        after:["接到球那一下真的很开心。","运动完累得很实在。"] },
+      { id:"photo", name:"出门拍照", group:"photo", zone:"door", pose:"pose-shy", scene:"outdoor", skill:"drawing", xp:10, weight:6, item:"camera", effects:{inspiration:12,mood:8,energy:-9,cleanliness:-4,satiety:-4},
+        lines:["我去找一点好看的光。","如果拍到漂亮的云，我想给你看。","这条路以前没仔细看过。"],
+        after:["照片里留下了一小块今天。","我发现生活里其实有很多角落。"] },
+      { id:"tea", name:"泡热茶", group:"drink", zone:"table", pose:"pose-eat", scene:"room", skill:"cooking", xp:6, weight:6, item:"tea-set", effects:{mood:8,focus:4,satiety:6,energy:2},
+        lines:["等水温降一点，不急。","茶香起来的时候，时间会慢一点。","我捧着杯子，就没那么慌。"],
+        after:["热茶下肚，心口暖了一下。","这一杯把我哄慢了。"] }
+    ];
+
+    const shopItems = [
+      { id:"drawing-kit", name:"画画套装", price:70, desc:"画本、铅笔和小色卡。", unlock:["draw","color"] },
+      { id:"recipe-book", name:"食谱本", price:90, desc:"让她开始研究做饭。", unlock:["recipe","cook-soup"] },
+      { id:"diary", name:"日记本", price:65, desc:"晚上会写一点自己的话。", unlock:["diary"] },
+      { id:"plant-pot", name:"小盆栽", price:80, desc:"房间里多一个会长大的东西。", unlock:["plant"] },
+      { id:"headphones", name:"轻耳机", price:90, desc:"心情低的时候更会听歌。", unlock:["music"] },
+      { id:"craft-box", name:"手工盒", price:110, desc:"纸、胶水和小剪刀。", unlock:["craft"] },
+      { id:"yoga-mat", name:"瑜伽垫", price:95, desc:"适合室内轻运动。", unlock:["yoga"] },
+      { id:"running-shoes", name:"跑鞋", price:120, desc:"解锁慢跑和冲刺。", unlock:["run","sprint"] },
+      { id:"bicycle", name:"轻便单车", price:180, desc:"出门兜风，也要检查车。", unlock:["bike","bike-care"] },
+      { id:"swim-gear", name:"游泳装备", price:170, desc:"泳镜、泳帽和毛巾。", unlock:["swim"] },
+      { id:"jump-rope", name:"跳绳", price:100, desc:"十分钟也能出汗。", unlock:["jump-rope"] },
+      { id:"badminton", name:"羽毛球拍", price:140, desc:"出门打一会儿球。", unlock:["badminton"] },
+      { id:"camera", name:"小相机", price:150, desc:"把今天好看的部分拍下来。", unlock:["photo"] },
+      { id:"tea-set", name:"温茶套组", price:85, desc:"给休息加一点热气。", unlock:["tea"] }
+    ];
+
+    const defaultState = () => ({
+      totalMinutes: 0,
+      totalRounds: 0,
+      gold: 60,
+      activeStart: null,
+      currentAction: "read",
+      lastAction: null,
+      recentActions: [],
+      recentGroups: [],
+      owned: [],
+      stats: { satiety: 72, energy: 76, cleanliness: 70, mood: 74, focus: 56, inspiration: 52 },
+      skills: Object.fromEntries(skillMeta.map(([id]) => [id, { level: 1, xp: 0 }])),
+      days: {},
+      line: "你先别切走，我看完这一页就给你汇报。",
+      interrupted: false,
+      wake: false
+    });
+
+    let state = loadState();
+    let noticeOpen = false;
+    let wakeLock = null;
+    let lastTick = Date.now();
+    let lastRenderedAction = null;
+    let walkUntil = 0;
+    let ignoreBlurUntil = 0;
+
+    const els = {
+      app: document.getElementById("app"),
+      scene: document.getElementById("sceneWrap"),
+      avatar: document.getElementById("avatar"),
+      statusText: document.getElementById("statusText"),
+      timerText: document.getElementById("timerText"),
+      goldText: document.getElementById("goldText"),
+      ageText: document.getElementById("ageText"),
+      actionLabel: document.getElementById("actionLabel"),
+      lineText: document.getElementById("lineText"),
+      currentActionName: document.getElementById("currentActionName"),
+      currentActionNote: document.getElementById("currentActionNote"),
+      roundFill: document.getElementById("roundFill"),
+      todayMinutes: document.getElementById("todayMinutes"),
+      todayStarts: document.getElementById("todayStarts"),
+      statsGrid: document.getElementById("statsGrid"),
+      skillsGrid: document.getElementById("skillsGrid"),
+      shopGrid: document.getElementById("shopGrid"),
+      reviewList: document.getElementById("reviewList"),
+      modal: document.getElementById("modal"),
+      closeModal: document.getElementById("closeModal"),
+      wakeButton: document.getElementById("wakeButton"),
+      fullscreenButton: document.getElementById("fullscreenButton"),
+      resetButton: document.getElementById("resetButton"),
+      toast: document.getElementById("toast")
+    };
+
+    function todayKey() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function ensureToday() {
+      const key = todayKey();
+      if (!state.days[key]) {
+        state.days[key] = {
+          date: key,
+          minutes: 0,
+          rounds: 0,
+          starts: 0,
+          coins: 0,
+          actions: {},
+          levelUps: [],
+          summary: "她还在等今天的第一段陪伴。"
+        };
+      }
+      return state.days[key];
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORE_KEY);
+        const saved = raw ? JSON.parse(raw) : {};
+        const base = defaultState();
+        const merged = {
+          ...base,
+          ...saved,
+          stats: { ...base.stats, ...(saved.stats || {}) },
+          skills: { ...base.skills, ...(saved.skills || {}) },
+          days: saved.days || {},
+          owned: Array.isArray(saved.owned) ? saved.owned : [],
+          recentActions: Array.isArray(saved.recentActions) ? saved.recentActions : [],
+          recentGroups: Array.isArray(saved.recentGroups) ? saved.recentGroups : []
+        };
+        skillMeta.forEach(([id]) => {
+          merged.skills[id] = { level: Math.max(1, +(merged.skills[id]?.level || 1)), xp: Math.max(0, +(merged.skills[id]?.xp || 0)) };
+        });
+        return merged;
+      } catch {
+        return defaultState();
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    }
+
+    function actionById(id) {
+      return actions.find(action => action.id === id) || actions[0];
+    }
+
+    function formatTime(ms) {
+      const s = Math.max(0, Math.ceil(ms / 1000));
+      const m = String(Math.floor(s / 60)).padStart(2, "0");
+      const sec = String(s % 60).padStart(2, "0");
+      return `${m}:${sec}`;
+    }
+
+    function formatMinutes(minutes) {
+      if (minutes < 60) return `${minutes} 分钟`;
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return m ? `${h} 小时 ${m} 分钟` : `${h} 小时`;
+    }
+
+    function xpNeed(level) {
+      return 20 + level * level * 6;
+    }
+
+    function clamp(v) {
+      return Math.max(0, Math.min(100, Math.round(v)));
+    }
+
+    function pick(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function beginRound(countStart = true, line) {
+      const day = ensureToday();
+      if (countStart) day.starts += 1;
+      state.activeStart = Date.now();
+      state.interrupted = false;
+      state.line = line || pick([...actionById(state.currentAction).lines, ...softLines]);
+      saveState();
+      render();
+    }
+
+    function availableActions() {
+      return actions.filter(action => !action.item || state.owned.includes(action.item));
+    }
+
+    function weightedAction(action) {
+      const st = state.stats;
+      let w = action.weight || 5;
+      if (action.group === "meal") w += st.satiety < 30 ? 36 : st.satiety < 50 ? 14 : -4;
+      if (action.group === "drink") w += st.satiety < 45 ? 8 : 1;
+      if (action.group === "sleep") w += st.energy < 22 ? 42 : st.energy < 42 ? 18 : -8;
+      if (action.group === "rest-light") w += st.energy < 35 ? 22 : -3;
+      if (action.group === "hygiene") w += st.cleanliness < 35 ? 36 : st.cleanliness < 55 ? 14 : -3;
+      if (["quiet", "music"].includes(action.group)) w += st.mood < 42 ? 18 : 3;
+      if (["study", "reading"].includes(action.group)) w += st.focus > 58 ? 10 : st.energy < 35 ? -12 : 2;
+      if (["art", "craft", "photo"].includes(action.group)) w += st.inspiration > 58 ? 10 : 2;
+      if (action.scene === "outdoor") w += st.energy > 48 && st.cleanliness > 30 ? 8 : -8;
+      if (state.recentActions.includes(action.id)) w *= .22;
+      if (state.recentGroups.includes(action.group)) w *= .42;
+      if (state.lastAction === action.id) w = 0;
+      return Math.max(.5, w);
+    }
+
+    function chooseNextAction() {
+      let list = availableActions().filter(action => action.id !== state.lastAction);
+      const last = state.recentGroups[0];
+      if (last) {
+        const filtered = list.filter(action => action.group !== last);
+        if (filtered.length > 8) list = filtered;
+      }
+      if (last === "sleep" || last === "rest-light") {
+        const noRest = list.filter(action => !["sleep", "rest-light"].includes(action.group));
+        if (noRest.length && state.stats.energy > 20) list = noRest;
+      }
+      if (last === "meal" && state.stats.satiety > 25) {
+        const noMeal = list.filter(action => action.group !== "meal");
+        if (noMeal.length) list = noMeal;
+      }
+      const weighted = list.map(action => ({ action, weight: weightedAction(action) }));
+      const sum = weighted.reduce((acc, item) => acc + item.weight, 0);
+      let cursor = Math.random() * sum;
+      for (const item of weighted) {
+        cursor -= item.weight;
+        if (cursor <= 0) return item.action;
+      }
+      return weighted[0]?.action || actions[0];
+    }
+
+    function addXp(skillId, xp, levelUps) {
+      if (!skillId || !xp) return;
+      const s = state.skills[skillId];
+      s.xp += xp;
+      while (s.xp >= xpNeed(s.level)) {
+        s.xp -= xpNeed(s.level);
+        s.level += 1;
+        const name = skillMeta.find(([id]) => id === skillId)?.[1] || skillId;
+        levelUps.push(`${name} Lv.${s.level}`);
+      }
+    }
+
+    function completeRound() {
+      const action = actionById(state.currentAction);
+      const day = ensureToday();
+      const levelUps = [];
+      const decay = { satiety:-7, energy:-4, cleanliness:-4, mood:-1, focus:-2, inspiration:-1 };
+      Object.keys(state.stats).forEach(key => {
+        state.stats[key] = clamp(state.stats[key] + (decay[key] || 0) + (action.effects?.[key] || 0));
+      });
+      addXp(action.skill, action.xp, levelUps);
+      const bonus = (day.rounds + 1) % 3 === 0 ? 6 : 0;
+      const first = day.rounds === 0 ? 12 : 0;
+      const coins = 12 + bonus + first;
+      state.gold += coins;
+      state.totalMinutes += ROUND_MINUTES;
+      state.totalRounds += 1;
+      day.minutes += ROUND_MINUTES;
+      day.rounds += 1;
+      day.coins += coins;
+      day.actions[action.id] = (day.actions[action.id] || 0) + 1;
+      day.levelUps.push(...levelUps);
+      state.lastAction = action.id;
+      state.recentActions = [action.id, ...state.recentActions.filter(id => id !== action.id)].slice(0, 6);
+      state.recentGroups = [action.group, ...state.recentGroups.filter(g => g !== action.group)].slice(0, 5);
+      const next = chooseNextAction();
+      state.currentAction = next.id;
+      const doneLine = pick(action.after);
+      const nextLine = Math.random() > .5 ? `下一轮我想去「${next.name}」，你还陪我吗？` : pick(softLines);
+      const upLine = levelUps.length ? ` 还有，${levelUps.join("、")} 了。` : "";
+      day.summary = buildSummary(day, action.name);
+      state.line = `${doneLine} ${nextLine}${upLine}`;
+      beginRound(false, state.line);
+    }
+
+    function buildSummary(day, actionName) {
+      const names = Object.entries(day.actions)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([id]) => actionById(id).name);
+      return `她刚刚完成了「${actionName}」。今天主要做了：${names.join("、") || actionName}。`;
+    }
+
+    function interrupt() {
+      if (Date.now() < ignoreBlurUntil) return;
+      if (noticeOpen || !state.activeStart) return;
+      state.activeStart = null;
+      state.interrupted = true;
+      state.line = "你刚刚不见了，我就停下来了。没关系，回来就继续。";
+      saveState();
+      noticeOpen = true;
+      els.modal.classList.add("show");
+      render();
+    }
+
+    function buy(item) {
+      if (state.owned.includes(item.id)) return;
+      if (state.gold < item.price) {
+        showToast("金币还不够，再陪她几轮。");
+        return;
+      }
+      state.gold -= item.price;
+      state.owned.push(item.id);
+      state.line = `买了「${item.name}」。她小声说：这个我会好好用的。`;
+      saveState();
+      showToast(`已解锁：${item.name}`);
+      render();
+    }
+
+    function render() {
+      const now = Date.now();
+      const action = actionById(state.currentAction);
+      const day = ensureToday();
+      const elapsed = state.activeStart ? now - state.activeStart : 0;
+      const remaining = ROUND_MS - elapsed;
+      const progress = state.activeStart ? Math.min(100, elapsed / ROUND_MS * 100) : 0;
+      const gameDay = Math.floor(state.totalMinutes / (DAY_ROUNDS * ROUND_MINUTES)) + 1;
+      const part = Math.floor((state.totalMinutes % (DAY_ROUNDS * ROUND_MINUTES)) / ROUND_MINUTES) + 1;
+      const zone = zones[action.zone] || zones.center;
+      if (lastRenderedAction !== action.id) {
+        lastRenderedAction = action.id;
+        walkUntil = Date.now() + 920;
+      }
+
+      els.statusText.textContent = state.activeStart ? "挂机中" : "等你";
+      els.timerText.textContent = state.activeStart ? formatTime(remaining) : "10:00";
+      els.goldText.textContent = state.gold;
+      els.ageText.textContent = `第 ${gameDay} 天 · 第 ${part}/${DAY_ROUNDS} 段`;
+      els.actionLabel.textContent = `现在：${action.name}`;
+      els.lineText.textContent = state.line;
+      els.currentActionName.textContent = action.name;
+      els.currentActionNote.textContent = action.scene === "outdoor" ? "她走到门口，准备出门活动" : "她会在房间里移动和家具互动";
+      els.roundFill.style.width = `${progress}%`;
+      els.todayMinutes.textContent = formatMinutes(day.minutes);
+      els.todayStarts.textContent = day.starts;
+
+      els.scene.classList.toggle("outdoor", action.scene === "outdoor");
+      els.scene.classList.toggle("water", action.scene === "water");
+      els.avatar.style.setProperty("--char-x", `${zone.x}%`);
+      els.avatar.style.setProperty("--char-y", `${zone.y}%`);
+      els.avatar.style.setProperty("--char-scale", zone.scale);
+      els.avatar.className = `avatar ${action.pose || "pose-shy"} ${Date.now() < walkUntil ? "walking" : ""}`;
+
+      renderStats();
+      renderSkills();
+      renderShop();
+      renderReview();
+    }
+
+    function renderStats() {
+      els.statsGrid.innerHTML = statMeta.map(([id, name, low, high]) => {
+        const value = state.stats[id];
+        const stateClass = value < 35 ? "low" : value > 72 ? "high" : "";
+        return `<div class="stat ${stateClass}">
+          <div class="stat-head"><span>${name}</span><b>${value}</b></div>
+          <div class="mini-bar"><span style="width:${value}%"></span></div>
+          <span class="hint">${value < 42 ? low : high}</span>
+        </div>`;
+      }).join("");
+    }
+
+    function renderSkills() {
+      els.skillsGrid.innerHTML = skillMeta.map(([id, name]) => {
+        const skill = state.skills[id];
+        const need = xpNeed(skill.level);
+        const width = Math.min(100, skill.xp / need * 100);
+        return `<div class="skill">
+          <div class="skill-head"><span>${name} Lv.${skill.level}</span><b>${skill.xp}/${need}</b></div>
+          <div class="mini-bar"><span style="width:${width}%"></span></div>
+          <span class="hint">相关行动完成后会涨经验，等级越高越慢。</span>
+        </div>`;
+      }).join("");
+    }
+
+    function renderShop() {
+      els.shopGrid.innerHTML = shopItems.map(item => {
+        const owned = state.owned.includes(item.id);
+        const canBuy = state.gold >= item.price;
+        const tags = item.unlock.map(id => `<span class="tag">${actionById(id).name}</span>`).join("");
+        return `<article class="shop-card">
+          <div><strong>${item.name}</strong><p>${item.desc}</p></div>
+          <div class="tags">${tags}</div>
+          <button class="buy" data-buy="${item.id}" ${owned || !canBuy ? "disabled" : ""}>${owned ? "已拥有" : item.price + " 金币"}</button>
+        </article>`;
+      }).join("");
+      els.shopGrid.querySelectorAll("[data-buy]").forEach(button => {
+        button.addEventListener("click", () => {
+          const item = shopItems.find(it => it.id === button.dataset.buy);
+          if (item) buy(item);
+        });
+      });
+    }
+
+    function renderReview() {
+      const days = Object.values(state.days).sort((a, b) => b.date.localeCompare(a.date));
+      els.reviewList.innerHTML = days.length ? days.map(day => {
+        const ups = day.levelUps.slice(-3).map(x => `<span class="tag">${x}</span>`).join("");
+        return `<article class="review-card">
+          <strong>${day.date} · ${formatMinutes(day.minutes)}</strong>
+          <p>${day.summary}</p>
+          <div class="tags" style="margin-top:8px;">
+            <span class="tag">完成 ${day.rounds} 轮</span>
+            <span class="tag">开始 ${day.starts} 次</span>
+            <span class="tag">金币 +${day.coins}</span>
+            ${ups}
+          </div>
+        </article>`;
+      }).join("") : `<article class="review-card"><strong>还没有回顾</strong><p>先陪她完成一个十分钟吧。</p></article>`;
+    }
+
+    function showToast(text) {
+      els.toast.textContent = text;
+      els.toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => els.toast.classList.remove("show"), 2200);
+    }
+
+    async function requestWakeLock() {
+      try {
+        ignoreBlurUntil = Date.now() + 1800;
+        if (!("wakeLock" in navigator)) {
+          showToast("这个浏览器不支持亮屏锁。");
+          return;
+        }
+        wakeLock = await navigator.wakeLock.request("screen");
+        els.wakeButton.textContent = "亮屏中";
+        showToast("已尽量保持屏幕常亮。");
+        wakeLock.addEventListener("release", () => {
+          wakeLock = null;
+          els.wakeButton.textContent = "亮屏";
+        });
+      } catch {
+        showToast("亮屏请求被浏览器拦住了。");
+      }
+    }
+
+    document.querySelectorAll(".tabs button").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tabs button").forEach(btn => btn.classList.toggle("active", btn === button));
+        document.querySelectorAll(".panel").forEach(panel => panel.classList.remove("active"));
+        document.getElementById(`panel-${button.dataset.tab}`).classList.add("active");
+      });
+    });
+
+    els.closeModal.addEventListener("click", () => {
+      ignoreBlurUntil = Date.now() + 1200;
+      noticeOpen = false;
+      els.modal.classList.remove("show");
+      beginRound(true, "你回来了。那我重新开始，这次别走太远。");
+    });
+
+    els.wakeButton.addEventListener("click", requestWakeLock);
+
+    els.fullscreenButton.addEventListener("click", async () => {
+      try {
+        ignoreBlurUntil = Date.now() + 1800;
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+          showToast("已进入全屏。");
+        } else {
+          await document.exitFullscreen();
+        }
+      } catch {
+        showToast("这个浏览器不允许全屏。");
+      }
+    });
+
+    els.resetButton.addEventListener("click", () => {
+      ignoreBlurUntil = Date.now() + 1200;
+      if (!confirm("确定要清空本地存档吗？")) return;
+      state = defaultState();
+      beginRound(true, "新的存档开始了。你坐好，我也坐好。");
+      showToast("存档已重置。");
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) interrupt();
+      else if (wakeLock === null && els.wakeButton.textContent === "亮屏中") requestWakeLock();
+    });
+
+    window.addEventListener("blur", () => {
+      setTimeout(() => {
+        if (!document.hasFocus()) interrupt();
+      }, 120);
+    });
+
+    window.addEventListener("pagehide", () => {
+      if (state.activeStart) {
+        state.activeStart = null;
+        state.interrupted = true;
+        saveState();
+      }
+    });
+
+    setInterval(() => {
+      const now = Date.now();
+      if (now - lastTick > 1000) lastTick = now;
+      if (state.activeStart && now - state.activeStart >= ROUND_MS) {
+        completeRound();
+        return;
+      }
+      render();
+    }, 500);
+
+    setInterval(() => {
+      if (!state.activeStart || noticeOpen) return;
+      const action = actionById(state.currentAction);
+      state.line = Math.random() > .45 ? pick(action.lines) : pick(softLines);
+      saveState();
+      render();
+    }, 26000);
+
+    ensureToday();
+    if (state.activeStart || state.interrupted) {
+      state.activeStart = null;
+      state.interrupted = false;
+      saveState();
+      noticeOpen = true;
+      els.modal.classList.add("show");
+    } else {
+      beginRound(true, "你来了。那我开始做事，你别偷偷跑去别的 App。");
+    }
+    render();
+  </script>
+</body>
+</html>
