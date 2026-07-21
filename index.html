@@ -599,6 +599,19 @@
       filter: drop-shadow(0 12px 10px rgba(80, 52, 38, .18));
     }
 
+    .bunny-sprite {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      display: block;
+      width: 100%;
+      height: auto;
+      transform: translateX(-50%);
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+
     .avatar.walking {
       animation: tinyWalk .72s ease-in-out 2;
     }
@@ -1395,9 +1408,20 @@
     }
 
     .avatar {
-      width: 92px;
+      width: 86px;
       height: 124px;
       filter: drop-shadow(0 10px 8px rgba(80, 52, 38, .2));
+    }
+
+    .avatar .head,
+    .avatar .hair,
+    .avatar .ear,
+    .avatar .eye,
+    .avatar .mouth,
+    .avatar .body,
+    .avatar .arm,
+    .avatar .leg {
+      display: none;
     }
 
     .hair {
@@ -1533,6 +1557,73 @@
         font-size: 11px;
       }
     }
+
+    /* Animated action stage. GIFs are generated bitmap assets, so the old
+       room/avatar layers stay hidden and each action owns the whole scene. */
+    .scene-wrap {
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      gap: 8px;
+      padding: 9px;
+      background:
+        linear-gradient(180deg, rgba(255, 250, 239, .94), rgba(249, 226, 191, .94));
+    }
+
+    .scene-wrap.outdoor,
+    .scene-wrap.water {
+      background-image:
+        linear-gradient(180deg, rgba(255, 250, 239, .94), rgba(249, 226, 191, .94));
+    }
+
+    .scene-wrap.outdoor::after,
+    .scene-wrap.water::after,
+    .room,
+    .avatar {
+      display: none !important;
+    }
+
+    .action-stage {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 2px solid rgba(95, 62, 49, .46);
+      border-radius: 18px;
+      overflow: hidden;
+      background: #fffaf0;
+      box-shadow: inset 0 -8px 0 rgba(234, 195, 132, .18);
+    }
+
+    .action-gif {
+      display: block;
+      width: min(100%, 520px);
+      height: auto;
+      max-height: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+      border-radius: 14px;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .speech {
+      position: static;
+      align-self: end;
+      margin: 0;
+      border-radius: 14px;
+      background: rgba(255, 251, 238, .98);
+      box-shadow: 0 7px 16px rgba(76, 48, 31, .1);
+    }
+
+    @media (max-width: 390px) {
+      .scene-wrap {
+        padding: 7px;
+        gap: 7px;
+      }
+
+      .speech {
+        padding: 10px 11px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1545,53 +1636,13 @@
       <div class="hud-right">
         <div class="hud-chip"><b id="statusText">挂机中</b><span>状态</span></div>
         <div class="hud-chip"><b id="timerText">10:00</b><span>本轮</span></div>
-        <div class="hud-chip"><b id="goldText">60</b><span>金币</span></div>
+        <div class="hud-chip"><b id="goldText">0</b><span>金币</span></div>
       </div>
     </header>
 
-    <section id="sceneWrap" class="scene-wrap" aria-label="主角房间">
-      <div class="room">
-        <div class="scallop"></div>
-        <div class="wall-dots"></div>
-        <div class="window"></div>
-        <div class="curtain left"></div>
-        <div class="curtain right"></div>
-        <div class="wainscot"></div>
-        <div class="floor-grid"></div>
-        <div class="outdoor-hint"></div>
-        <div class="door"></div>
-        <div class="shelf"><span></span><span></span><span></span><span></span></div>
-        <div class="bed"><div class="blanket"></div></div>
-        <div class="desk"><div class="desk-top"></div></div>
-        <div class="lamp"></div>
-        <div class="rug"></div>
-        <div class="tea-table"><span class="plate one"></span><span class="plate two"></span><span class="plate three"></span></div>
-        <div class="door-mat"></div>
-        <div class="plant"><span class="leaf a"></span><span class="leaf b"></span><span class="leaf c"></span><span class="leaf d"></span><span class="leaf e"></span><span class="pot"></span></div>
-      </div>
-
-      <div id="avatar" class="avatar pose-read">
-        <div class="hair"></div>
-        <div class="head">
-          <span class="ear left"></span>
-          <span class="ear right"></span>
-          <span class="eye left"></span>
-          <span class="eye right"></span>
-          <span class="mouth"></span>
-        </div>
-        <div class="body"></div>
-        <span class="arm left"></span>
-        <span class="arm right"></span>
-        <span class="leg left"></span>
-        <span class="leg right"></span>
-        <span class="prop book"></span>
-        <span class="prop bowl"></span>
-        <span class="prop brush"></span>
-        <span class="prop paper"></span>
-        <span class="prop dumbbell"></span>
-        <span class="prop bike"><span></span></span>
-        <span class="prop swim"></span>
-        <span class="prop mop"></span>
+    <section id="sceneWrap" class="scene-wrap" aria-label="当前动作">
+      <div class="action-stage">
+        <img id="actionGif" class="action-gif" src="assets/actions/reading.gif" alt="当前动作动图">
       </div>
 
       <div class="speech">
@@ -1647,7 +1698,7 @@
     <div class="modal-card">
       <button id="closeModal" class="close" aria-label="关闭提示">×</button>
       <h2>她停下来了</h2>
-      <p>刚刚页面不在前台，这一段没算进去。关掉这个提示后，她会重新开始一个新的十分钟。</p>
+      <p>刚刚页面不在前台超过了 5 秒，这一段没算进去。关掉这个提示后，她会换一件事重新开始一个新的十分钟。</p>
       <p style="margin-top:10px;"><b>“你回来了就好。别走太久，我真的会卡住。”</b></p>
     </div>
   </div>
@@ -1658,7 +1709,8 @@
     const ROUND_MS = 10 * 60 * 1000;
     const ROUND_MINUTES = 10;
     const DAY_ROUNDS = 12;
-    const STORE_KEY = "companion-room-html-v1";
+    const INTERRUPT_GRACE_MS = 5000;
+    const STORE_KEY = "companion-room-html-v2";
 
     const zones = {
       center: { x: 49, y: 69, scale: .98 },
@@ -1827,8 +1879,9 @@
     const defaultState = () => ({
       totalMinutes: 0,
       totalRounds: 0,
-      gold: 60,
+      gold: 0,
       activeStart: null,
+      pendingAwayAt: null,
       currentAction: "read",
       lastAction: null,
       recentActions: [],
@@ -1847,13 +1900,14 @@
     let wakeLock = null;
     let lastTick = Date.now();
     let lastRenderedAction = null;
-    let walkUntil = 0;
     let ignoreBlurUntil = 0;
+    let interruptTimer = null;
+    let awayStartedAt = null;
 
     const els = {
       app: document.getElementById("app"),
       scene: document.getElementById("sceneWrap"),
-      avatar: document.getElementById("avatar"),
+      actionGif: document.getElementById("actionGif"),
       statusText: document.getElementById("statusText"),
       timerText: document.getElementById("timerText"),
       goldText: document.getElementById("goldText"),
@@ -1928,6 +1982,58 @@
 
     function actionById(id) {
       return actions.find(action => action.id === id) || actions[0];
+    }
+
+    const gifAssets = {
+      reading: "assets/actions/reading.gif",
+      eating: "assets/actions/eating.gif",
+      sleeping: "assets/actions/sleeping.gif",
+      studying: "assets/actions/studying.gif",
+      drawing: "assets/actions/drawing.gif",
+      stretching: "assets/actions/stretching.gif"
+    };
+
+    function gifForAction(action) {
+      const byId = {
+        read: "reading",
+        recipe: "reading",
+        eat: "eating",
+        drink: "eating",
+        "cook-soup": "eating",
+        tea: "eating",
+        nap: "sleeping",
+        sleep: "sleeping",
+        study: "studying",
+        plan: "studying",
+        diary: "studying",
+        draw: "drawing",
+        color: "drawing",
+        craft: "drawing"
+      };
+      const byGroup = {
+        reading: "reading",
+        meal: "eating",
+        drink: "eating",
+        cook: "eating",
+        sleep: "sleeping",
+        "rest-light": "sleeping",
+        study: "studying",
+        journal: "studying",
+        tidy: "studying",
+        "bike-care": "studying",
+        art: "drawing",
+        craft: "drawing",
+        plant: "drawing",
+        photo: "drawing",
+        exercise: "stretching",
+        "outdoor-run": "stretching",
+        bike: "stretching",
+        swim: "stretching",
+        ball: "stretching",
+        hygiene: "stretching"
+      };
+      const kind = byId[action.id] || byGroup[action.group] || "reading";
+      return gifAssets[kind] || gifAssets.reading;
     }
 
     function formatTime(ms) {
@@ -2067,6 +2173,11 @@
     }
 
     function interrupt() {
+      if (interruptTimer) {
+        clearTimeout(interruptTimer);
+        interruptTimer = null;
+      }
+      awayStartedAt = null;
       if (Date.now() < ignoreBlurUntil) return;
       if (noticeOpen || !state.activeStart) return;
       state.activeStart = null;
@@ -2076,6 +2187,44 @@
       noticeOpen = true;
       els.modal.classList.add("show");
       render();
+    }
+
+    function scheduleInterrupt() {
+      if (Date.now() < ignoreBlurUntil) return;
+      if (noticeOpen || !state.activeStart || interruptTimer) return;
+      awayStartedAt = Date.now();
+      state.line = "我先等你一下，五秒内回来就继续算。";
+      render();
+      interruptTimer = setTimeout(() => {
+        interruptTimer = null;
+        interrupt();
+      }, INTERRUPT_GRACE_MS);
+    }
+
+    function cancelInterrupt() {
+      if (!interruptTimer) return;
+      clearTimeout(interruptTimer);
+      interruptTimer = null;
+      awayStartedAt = null;
+      const action = actionById(state.currentAction);
+      state.line = Math.random() > .45 ? "回来了？好险，我差点就停下来了。" : pick(action.lines);
+      saveState();
+      render();
+    }
+
+    function chooseAfterInterrupt() {
+      const previous = state.currentAction;
+      const previousAction = actionById(previous);
+      state.lastAction = previous;
+      state.recentActions = [previous, ...state.recentActions.filter(id => id !== previous)].slice(0, 6);
+      state.recentGroups = [previousAction.group, ...state.recentGroups.filter(g => g !== previousAction.group)].slice(0, 5);
+      let next = chooseNextAction();
+      const choices = availableActions().filter(action => action.id !== previous);
+      if (next.id === previous && choices.length && Math.random() < .86) {
+        next = pick(choices);
+      }
+      state.currentAction = next.id;
+      return next;
     }
 
     function buy(item) {
@@ -2101,10 +2250,13 @@
       const progress = state.activeStart ? Math.min(100, elapsed / ROUND_MS * 100) : 0;
       const gameDay = Math.floor(state.totalMinutes / (DAY_ROUNDS * ROUND_MINUTES)) + 1;
       const part = Math.floor((state.totalMinutes % (DAY_ROUNDS * ROUND_MINUTES)) / ROUND_MINUTES) + 1;
-      const zone = zones[action.zone] || zones.center;
       if (lastRenderedAction !== action.id) {
         lastRenderedAction = action.id;
-        walkUntil = Date.now() + 920;
+        const gif = gifForAction(action);
+        if (els.actionGif) {
+          els.actionGif.src = gif;
+          els.actionGif.alt = `${action.name}动图`;
+        }
       }
 
       els.statusText.textContent = state.activeStart ? "挂机中" : "等你";
@@ -2114,17 +2266,13 @@
       els.actionLabel.textContent = `现在：${action.name}`;
       els.lineText.textContent = state.line;
       els.currentActionName.textContent = action.name;
-      els.currentActionNote.textContent = action.scene === "outdoor" ? "她走到门口，准备出门活动" : "她会在房间里移动和家具互动";
+      els.currentActionNote.textContent = action.scene === "outdoor" ? "她慢慢出门活动，偶尔回头看你还在不在。" : "她把动作放慢一点，像是在等你一起陪着。";
       els.roundFill.style.width = `${progress}%`;
       els.todayMinutes.textContent = formatMinutes(day.minutes);
       els.todayStarts.textContent = day.starts;
 
       els.scene.classList.toggle("outdoor", action.scene === "outdoor");
       els.scene.classList.toggle("water", action.scene === "water");
-      els.avatar.style.setProperty("--char-x", `${zone.x}%`);
-      els.avatar.style.setProperty("--char-y", `${zone.y}%`);
-      els.avatar.style.setProperty("--char-scale", zone.scale);
-      els.avatar.className = `avatar ${action.pose || "pose-shy"} ${Date.now() < walkUntil ? "walking" : ""}`;
 
       renderStats();
       renderSkills();
@@ -2231,7 +2379,8 @@
       ignoreBlurUntil = Date.now() + 1200;
       noticeOpen = false;
       els.modal.classList.remove("show");
-      beginRound(true, "你回来了。那我重新开始，这次别走太远。");
+      const next = chooseAfterInterrupt();
+      beginRound(true, `你回来了。那我先去「${next.name}」，这次别走太远。`);
     });
 
     els.wakeButton.addEventListener("click", requestWakeLock);
@@ -2259,20 +2408,25 @@
     });
 
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) interrupt();
-      else if (wakeLock === null && els.wakeButton.textContent === "亮屏中") requestWakeLock();
+      if (document.hidden) {
+        scheduleInterrupt();
+      } else {
+        cancelInterrupt();
+        if (wakeLock === null && els.wakeButton.textContent === "亮屏中") requestWakeLock();
+      }
     });
 
     window.addEventListener("blur", () => {
       setTimeout(() => {
-        if (!document.hasFocus()) interrupt();
+        if (!document.hasFocus()) scheduleInterrupt();
       }, 120);
     });
 
+    window.addEventListener("focus", cancelInterrupt);
+
     window.addEventListener("pagehide", () => {
       if (state.activeStart) {
-        state.activeStart = null;
-        state.interrupted = true;
+        state.pendingAwayAt = Date.now();
         saveState();
       }
     });
@@ -2296,9 +2450,13 @@
     }, 26000);
 
     ensureToday();
-    if (state.activeStart || state.interrupted) {
+    if (state.pendingAwayAt && state.activeStart && Date.now() - state.pendingAwayAt <= INTERRUPT_GRACE_MS) {
+      state.pendingAwayAt = null;
+      beginRound(false, "你回来得很快，我就当你刚刚只是眨了个眼。");
+    } else if (state.activeStart || state.interrupted || state.pendingAwayAt) {
       state.activeStart = null;
       state.interrupted = false;
+      state.pendingAwayAt = null;
       saveState();
       noticeOpen = true;
       els.modal.classList.add("show");
