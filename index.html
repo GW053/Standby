@@ -27,7 +27,6 @@
       --char-scale: 1;
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --island-space: 0px;
       color-scheme: light;
     }
 
@@ -67,7 +66,7 @@
       gap: 10px;
       width: 100%;
       height: 100dvh;
-      padding: calc(10px + var(--safe-top) + var(--island-space)) 10px calc(10px + var(--safe-bottom));
+      padding: calc(10px + var(--safe-top)) 10px calc(10px + var(--safe-bottom));
       background:
         linear-gradient(180deg, rgba(255, 245, 222, .92), rgba(251, 226, 190, .96)),
         radial-gradient(circle at 20% 8%, rgba(255, 255, 255, .75), transparent 30%);
@@ -119,7 +118,7 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
-      margin-top: 10px;
+      margin: 0 0 12px;
     }
 
     .tiny-button,
@@ -172,12 +171,6 @@
       font-weight: 900;
       line-height: 1.1;
       box-shadow: inset 0 -4px 0 rgba(238, 192, 125, .18);
-    }
-
-    @media (max-width: 640px) and (orientation: portrait) {
-      :root {
-        --island-space: 30px;
-      }
     }
 
     .scene-wrap {
@@ -1780,10 +1773,13 @@
     .action-stage {
       min-height: 0;
       display: grid;
-      place-items: center;
+      align-items: start;
+      justify-items: center;
       border: 2px solid rgba(95, 62, 49, .46);
       border-radius: 18px;
-      overflow: hidden;
+      overflow: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
       background: #fffaf0;
       box-shadow: inset 0 -8px 0 rgba(234, 195, 132, .18);
     }
@@ -1792,9 +1788,10 @@
       display: block;
       width: min(100%, 520px);
       height: auto;
-      max-height: 100%;
+      max-height: none;
       aspect-ratio: 1 / 1;
       object-fit: contain;
+      object-position: top center;
       border-radius: 14px;
       user-select: none;
       -webkit-user-drag: none;
@@ -1845,7 +1842,7 @@
 
       <div class="speech">
         <small id="actionLabel">现在：读几页书</small>
-        <p id="lineText">你先别切走，我看完这一页就给你汇报。</p>
+        <p id="lineText">看书怎么这么无聊，不想看，但还是尽量先把十分钟看完吧</p>
       </div>
     </section>
 
@@ -1898,9 +1895,8 @@
   <div id="modal" class="modal" role="dialog" aria-modal="true" aria-label="挂机中断提示">
     <div class="modal-card">
       <button id="closeModal" class="close" aria-label="关闭提示">×</button>
-      <h2>她停下来了</h2>
-      <p>刚刚页面不在前台超过了 5 秒，这一段没算进去。关掉这个提示后，她会换一件事重新开始一个新的十分钟。</p>
-      <p style="margin-top:10px;"><b>“你回来了就好。别走太久，我真的会卡住。”</b></p>
+      <h2>刚刚的行动中断了</h2>
+      <p style="margin-top:10px;"><b id="interruptLine">“要你陪着我才想继续做嘛~”</b></p>
     </div>
   </div>
 
@@ -1923,11 +1919,19 @@
     const INTERRUPT_GRACE_MS = 5000;
     const STORE_KEY = "companion-room-html-v2";
     const DEVICE_ID_KEY = "companion-room-device-id";
+    const PUBLIC_SITE_URL = "https://gw053.github.io/Standby/";
     const SUPABASE_URL = "https://hgmpswhitmenyvnxotff.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_WW3rmZCePegJsIf6LeqFvQ_KRgHD9pz";
     const CLOUD_TABLE = "companion_saves";
     const CLOUD_SYNC_DEBOUNCE_MS = 1400;
     const VERSION_BASE_DATE = "2026-07-21";
+    const INTERRUPT_LINES = [
+      "要你陪着我才想继续做嘛~",
+      "我们又准备开始做新的事情了吗",
+      "接下来做点什么好呢",
+      "这次要坚持陪着我至少十分钟哦",
+      "跟我一起再次努力吧"
+    ];
     const VERSION_CHANGELOG = {
       "2026-07-21": [
         "第一版：完成十分钟一轮的陪伴挂机玩法。",
@@ -1941,6 +1945,9 @@
         "登录和备份入口移到回顾页下方，顶部信息更清爽。",
         "备份 JSON 只保留存档内容，版本更新日志独立显示。",
         "版本信息改成按日期记录的更新日志。",
+        "云登录固定回跳到 Standby 正式站点，避免被默认 Site URL 带到其他项目。",
+        "中断弹窗改为更轻的随机台词提示。",
+        "删除手机端灵动岛额外留白，动图区域改为顶部对齐并允许滚动查看完整画面。",
         "调整金币规则入口、动作池入口、等级经验和动图对齐。"
       ]
     };
@@ -1979,118 +1986,125 @@
     ];
 
     const softLines = [
-      "你在就行，我不挑。真的。",
-      "你别切走，我会一下子泄气。",
-      "我刚刚想偷懒，看到你还在就忍住了。",
-      "再陪我十分钟嘛，我把这件事做完。",
-      "我有点黏你，先声明一下。",
-      "你不用一直盯着我，但不要离开这个页面。",
-      "你在这里，我就比较像个会好好生活的人。",
-      "我喜欢你把注意力放在我这里的时候。",
-      "别的小窗先不要开，好不好，就十分钟。",
-      "我知道这听起来很黏，但我真的需要你陪。",
-      "你陪着，我就不太想把今天弄得乱七八糟。",
-      "等这轮结束，我想听你夸我一句。",
-      "你刚刚还在吗？在的话我就继续。",
-      "我没什么大出息，先把这十分钟过好。",
-      "你要是一直在，我会偷偷开心很久。",
-      "今天也让我借一点你的注意力吧。"
+      "有你陪着我好开心，嘿嘿，喜欢你",
+      "答应我多陪陪我好吗，我会好好做事的",
+      "偷偷告诉你，其实我刚刚想偷懒，但还好忍住了，快夸我",
+      "你会不会经常偷偷看我",
+      "你会在好好学习吗",
+      "突击检查！你没有在用另一台设备玩游戏吧！",
+      "我相信我们都会把日子过得越来越好的！",
+      "偶尔开点小差好像也没关系",
+      "等下做些什么呢",
+      "有点馋了，有什么零食吃吗",
+      "表面上我在做这做那，实际上我满脑子都是冰激凌",
+      "不知道为什么感觉好困...",
+      "如果现在突然做十个俯卧撑会不会莫名其妙",
+      "想飞上天，和太阳肩并肩~",
+      "有时候我会想我真是全世界最可爱的小兔子！",
+      "身为社会主义接班兔，我要好好努力！",
+      "做得慢、效率低都没关系，只要在做就是在进步！",
+      "是不是该做一下复盘了",
+      "我将玫瑰藏于身后，风起花落，从此鲜花赠自己，纵马踏花向自由！",
+      "日出有盼，日落有思，平平安安，所遇皆甜",
+      "当你真的渴望得到什么时，整个宇宙都会联合起来帮你实现",
+      "命运无常我有常",
+      "七仰八叉手脚并用地向前蛄蛹吧！"
     ];
 
     const actions = [
       { id:"read", name:"读几页书", group:"reading", zone:"desk", pose:"pose-read", scene:"room", skill:"reading", xp:10, weight:10, effects:{focus:5,inspiration:4,mood:2,energy:-5,satiety:-4,cleanliness:-2},
-        lines:["你先别切走，我看完这一页就给你汇报。","这页我看三遍了，终于进脑子里一点。","我把手放在书上了，跑不掉了。"],
-        after:["我读完几页了，有一句写得还挺好。","书合上的时候，我有一点点踏实。"] },
+        lines:["看书怎么这么无聊，不想看，但还是尽量先把十分钟看完吧","这一段写得好精彩！","追风赶月莫停留，平芜尽处是春山","山不让尘，川不辞盈","流水不争先，争的是滔滔不绝","在心里种花，人生才不会荒芜","世界不会为胆怯者让路，但会为勇敢者重新洗牌"],
+        after:["虽然过程不是很专心，但也顺利完成了十分钟的阅读诶！","美滋滋完成今日阅读目标，其实还有点意犹未尽"] },
       { id:"study", name:"整理笔记", group:"study", zone:"desk", pose:"pose-study", scene:"room", skill:"study", xp:12, weight:10, effects:{focus:8,inspiration:2,mood:-1,energy:-8,satiety:-5,cleanliness:-2},
-        lines:["我开始写笔记了，你在的话我比较不想糊弄。","这块有点难，我先慢慢拆。","我不装懂，先把不会的圈起来。"],
-        after:["笔记多了一页，脑子也清楚了一点。","刚刚没有逃掉，算我赢一次。"] },
+        lines:["这一块的逻辑很复杂，好难梳理","你做笔记的时候也会咬笔尖吗","这一块还不清楚，后面再仔细看看","不靠运气，只养底气"],
+        after:["哇也是好好做完了两三页笔记诶，真不错","我觉得我今天这段笔记做得还是蛮清晰的诶"] },
       { id:"plan", name:"写今日小计划", group:"study", zone:"desk", pose:"pose-study", scene:"room", skill:"study", xp:7, weight:7, effects:{focus:7,inspiration:3,mood:3,energy:-3,satiety:-3},
-        lines:["我先写三件事，多了我会怕。","今天不要太贪心，能做一点是一点。","你帮我看着，我不要写完计划就跑路。"],
-        after:["计划写完了，今天好像没那么吓人。","我把事情切小块了，可以一口一口来。"] },
+        lines:["今天还准备做什么呢","怎么还有这么多事情要做","重要且紧急的最先做，重要且不紧急的优先做，紧急但不重要的快速做，不重要不紧急的不做或最后做..."],
+        after:["计划写完了，复杂的几项可以再切分成更小的目标","要好好完成今日计划！"] },
       { id:"eat", name:"坐下吃饭", group:"meal", zone:"table", pose:"pose-eat", scene:"room", skill:"cooking", xp:5, weight:13, effects:{satiety:32,energy:4,mood:5,focus:-2,cleanliness:-2},
-        lines:["我会好好吃，不边刷手机边乱吞。","第一口给自己，第二口想分给你。","吃饭的时候有人陪，真的会比较香。"],
-        after:["吃饱了，整个人没那么飘了。","胃被安抚好了，我也安静一点。"] },
+        lines:["听说专心吃饭也是一种冥想，慢慢静心咀嚼，感受每一份味道","这个好好吃，我喜欢！","我喜欢吃饭的时候搭配小甜水一起吃！"],
+        after:["吃饱了，有点晕晕的，犯困","许愿每一顿都是吃的我喜欢吃的！"] },
       { id:"drink", name:"喝水", group:"drink", zone:"table", pose:"pose-eat", scene:"room", skill:"health", xp:3, weight:8, effects:{satiety:7,energy:3,mood:2,focus:2},
-        lines:["我喝水，你也喝一口。","咕嘟咕嘟，好了，我没那么干了。","杯子放这儿，你别走。"],
-        after:["喝完水，脑袋清醒一点。","一点小照顾也算照顾。"] },
+        lines:["虽然不知道喝水为什么要喝十分钟但还是喝了","咕嘟咕嘟，一下喝了三百毫升， 你也喝点吧","其实我觉得纯净水比矿泉水好喝"],
+        after:["其实喝水也挺幸福的","每天能喝够水也是好好照顾自己了！"] },
       { id:"wash", name:"洗脸刷牙", group:"hygiene", zone:"door", pose:"pose-hygiene", scene:"room", skill:"health", xp:5, weight:10, effects:{cleanliness:28,mood:4,focus:4,energy:-2,satiety:-3},
-        lines:["我去洗脸，很快回来，你别趁机跑掉。","牙刷已经拿起来了，今天不能糊弄。","水有点凉，但我醒了。"],
-        after:["洗完脸以后，整个人像重启了一下。","清清爽爽的，我比较愿意继续。"] },
+        lines:["刷牙要好好用心刷，上下左右，牙齿的表面和咬合面，都要仔仔细细刷到","诶不小心把洗面奶当牙膏用了","这个洗脸巾还挺好用"],
+        after:["洗完脸以后感觉清醒了不少","舒服了，干净度upup"] },
       { id:"shower", name:"洗个热水澡", group:"hygiene", zone:"door", pose:"pose-hygiene", scene:"room", skill:"health", xp:6, weight:7, effects:{cleanliness:40,mood:8,energy:-5,focus:2,satiety:-4},
-        lines:["我洗快一点，不让你等太久。","热水一开，心情就软下来了。","我会把自己洗得香香的。"],
-        after:["洗完澡了，困是困，但很舒服。","热气散掉以后，心也松一点。"] },
+        lines:["热水洗起来就是好爽啊","嘻嘻身上滑滑的，好多泡泡","哇这个洗发水好香"],
+        after:["洗完澡了好舒服","最爽的就是早早洗完澡然后清清爽爽地躺在床上准备睡觉"] },
       { id:"nap", name:"趴着小睡", group:"rest-light", zone:"bed", pose:"pose-sleep", scene:"room", skill:"health", xp:4, weight:8, effects:{energy:24,mood:5,focus:2,satiety:-4,cleanliness:-4},
-        lines:["我只趴一会儿，你别趁我睡着走。","小睡不是偷懒，是充电。","你在旁边，我比较容易睡着。"],
-        after:["醒了，脑袋没那么沉了。","刚刚睡得不久，但够我继续了。"] },
+        lines:["虽然没到睡觉时间但偷偷睡一会","没事的该干的待会再干吧，现在最重要的是回复状态","喜欢有你陪着我睡觉"],
+        after:["醒了，虽然睡得不深，但好歹没那么困了","继续进行下一步行动！燃起来！"] },
       { id:"sleep", name:"认真睡一觉", group:"sleep", zone:"bed", pose:"pose-sleep", scene:"room", skill:"health", xp:6, weight:5, effects:{energy:45,mood:7,focus:4,satiety:-8,cleanliness:-7},
-        lines:["我要认真睡了，你守着我一下。","如果你还在，我会睡得比较安心。","我把被子盖好了。"],
-        after:["睡醒了，世界没那么重了。","这觉挺实在的，谢谢你没走。"] },
-      { id:"stare-window", name:"看窗外发呆", group:"quiet", zone:"window", pose:"pose-shy", scene:"room", weight:7, effects:{mood:7,inspiration:7,focus:-2,energy:2,satiety:-3},
-        lines:["我看一会儿窗外，心里太挤了。","外面也没什么特别的，但我想慢一点。","你在的话，发呆也不像掉线。"],
-        after:["我好像缓过来一点了。","窗外看完了，心里空出一点位置。"] },
+        lines:["美美睡觉","希望可以做一个很美妙的梦","盖着被子好舒服"],
+        after:["我好像梦到我在异世界冒险，好好玩","好爽，中间一次都没有醒过"] },
+      { id:"stare-window", name:"看窗外发呆", group:"quiet", zone:"window", pose:"pose-shy", scene:"room", skill:undefined, xp:undefined, weight:7, effects:{mood:7,inspiration:7,focus:-2,energy:2,satiety:-3},
+        lines:["我先盯着窗外放空一会，脑子有点吵。","外面也没发生什么，但云看起来蛮忙的。","你知道的，这山野浪漫为你而开"],
+        after:["发呆十分钟完成，感觉缓存清掉了一点。","窗外看完了，我又可以重新做人五分钟。"] },
       { id:"tidy-desk", name:"整理桌面", group:"tidy", zone:"desk", pose:"pose-tidy", scene:"room", skill:"tidying", xp:10, weight:10, effects:{cleanliness:13,focus:7,mood:4,energy:-6,satiety:-4},
-        lines:["先把桌面收出来，不然我坐下就烦。","这张纸留着，那张丢掉。","你看，我真的有在动。"],
-        after:["桌面空了一块，脑子也空了一块。","我把乱糟糟按住了一点。"] },
+        lines:["桌面乱得很有生命力，我先镇压一下。","这张纸先留着，万一它以后突然有用呢。","你看我都开始收拾了，快给我精神鼓掌。"],
+        after:["桌面空出来一块，心情也稍微亮堂一点。","我把乱糟糟按住了，虽然它可能明天还会反扑。"] },
       { id:"clean-room", name:"扫地擦地", group:"tidy", zone:"rug", pose:"pose-tidy", scene:"room", skill:"tidying", xp:12, weight:8, effects:{cleanliness:18,mood:5,energy:-10,focus:4,satiety:-5},
-        lines:["我从地毯边边开始扫。","灰尘好多，之前我装没看见。","扫完我就可以理直气壮躺一下。"],
-        after:["地上干净了，脚踩上去都轻一点。","房间被我救回来一点点。"] },
+        lines:["我从地毯边边开始扫，先解决看得见的混乱。","灰尘好多，之前假装没看到是我的错。","扫完我就可以理直气壮地瘫一下。"],
+        after:["地上干净了，脚踩上去都像有点加速。","房间被我救回来一点点，功德加一。"] },
       { id:"stretch", name:"在地毯上拉伸", group:"exercise", zone:"rug", pose:"pose-exercise", scene:"room", skill:"health", xp:10, weight:10, effects:{energy:-7,mood:7,focus:4,cleanliness:-3,satiety:-4},
-        lines:["肩膀太僵了，我拉一下。","数到十我就换边，不偷懒。","这个动作酸酸的，但舒服。"],
-        after:["拉伸完，身体像被展开了。","不算很厉害，但我动了。"] },
+        lines:["肩膀硬得像忘记关机，我拉一下。","数到十换边，不许偷偷少数两秒。","这个动作酸酸的，但感觉身体在说谢谢。"],
+        after:["拉伸完像被重新展开了，皱巴巴少一点。","不算很厉害，但至少我动了，已经赢过刚刚的我。"] },
       { id:"draw", name:"画一张小草稿", group:"art", zone:"desk", pose:"pose-draw", scene:"room", skill:"drawing", xp:13, weight:8, item:"drawing-kit", effects:{inspiration:9,focus:5,mood:5,energy:-7,satiety:-4,cleanliness:-2},
-        lines:["线歪了，但我先不撕纸。","我画慢一点，你不要笑我。","这里想涂成暖黄色。"],
-        after:["草稿有点笨，但我还挺喜欢。","纸上多了一点东西，今天就没白过。"] },
+        lines:["线歪了也先不撕纸，人生哪有那么多撤回键。","我画慢一点，你不许笑，笑也要说可爱。","这里想涂成暖黄色，像小蛋糕边边。"],
+        after:["草稿有点笨，但我越看越觉得它有前途。","纸上多了一点东西，今天就没有完全白过。"] },
       { id:"color", name:"做配色练习", group:"art", zone:"desk", pose:"pose-draw", scene:"room", skill:"drawing", xp:11, weight:6, item:"drawing-kit", effects:{inspiration:12,mood:6,focus:3,energy:-5,satiety:-3},
-        lines:["这个粉色太甜了，我换淡一点。","颜色放在一起，会有脾气。","我想把今天调得软一点。"],
-        after:["配色卡看着很乖，我心情也乖一点。","颜色真的会哄人。"] },
+        lines:["这个粉色太甜了，我换淡一点，不然像草莓奶油打翻。","颜色放在一起真的会吵架，我来当调解员。","我想把今天调得软一点，别那么硬邦邦。"],
+        after:["配色卡看着很乖，我心情也跟着乖了一点。","颜色真的会哄人，尤其是好看的颜色。"] },
       { id:"cook-soup", name:"煮一小锅汤", group:"cook", zone:"table", pose:"pose-cook", scene:"room", skill:"cooking", xp:14, weight:7, item:"recipe-book", effects:{satiety:22,mood:8,energy:-8,cleanliness:-7,focus:3},
-        lines:["汤咕嘟咕嘟的时候，房间会变暖。","我会小心火候，不让它扑出来。","香味出来了，想叫你也闻一下。"],
-        after:["汤喝完，胃和心都暖了。","自己煮出来的东西就是有点骄傲。"] },
+        lines:["汤咕嘟咕嘟的时候，房间像偷偷升温了。","我会盯好火候，不让它表演厨房事故。","香味出来了，好想隔空塞给你闻一下。"],
+        after:["汤喝完了，胃暖暖的，心也没那么空。","自己煮出来的东西就是会让人有点小得意。"] },
       { id:"recipe", name:"研究食谱", group:"cook", zone:"desk", pose:"pose-read", scene:"room", skill:"cooking", xp:11, weight:7, item:"recipe-book", effects:{focus:6,inspiration:5,mood:3,energy:-4,satiety:-3},
-        lines:["食谱又写适量，适量到底是多少。","这个步骤看起来能试，我先记一下。","我想学会几个不会翻车的菜。"],
-        after:["我学到一点厨房里的小门道。","下次做饭应该更有把握。"] },
+        lines:["食谱又写适量，适量到底是谁发明的谜语。","这个步骤看起来能试，我先记下来，别让脑子跑掉。","我想学几个不会翻车的菜，先从看懂菜谱开始。"],
+        after:["我学到一点厨房小门道，感觉离不翻车近了一厘米。","下次做饭应该更有把握，至少理论上是这样。"] },
       { id:"diary", name:"写日记", group:"journal", zone:"bed", pose:"pose-study", scene:"room", skill:"study", xp:8, weight:7, item:"diary", effects:{mood:8,focus:5,inspiration:5,energy:-4,satiety:-3},
-        lines:["我把今天写下来，不然它会散掉。","有些话我只写一点点，你不许偷看太多。","今天的标题就叫：你在。"],
-        after:["写完日记，心里被顺了一遍。","今天不是空白的，至少你陪过我。"] },
+        lines:["我把今天写下来，不然它会像散装薯片一样掉得到处都是。","焦虑是被封印掉的执行力，里面藏着你所有的不甘心、野心和宿命 ","自己的感受永远置顶"],
+        after:["写完日记，心里像被梳子慢慢梳了一遍。","没什么焦虑的，活着就能翻盘"] },
       { id:"plant", name:"给小植物浇水", group:"plant", zone:"plant", pose:"pose-shy", scene:"room", skill:"tidying", xp:7, weight:6, item:"plant-pot", effects:{mood:7,inspiration:5,cleanliness:2,energy:-2,satiety:-2},
-        lines:["小叶子也要人陪，跟我一样。","我少浇一点，不能把它淹了。","它长得慢，但它在长。"],
-        after:["盆栽精神一点，我也精神一点。","照顾它的时候，我会变温柔。"] },
+        lines:["小叶子也要人陪，跟我一样，合理。","我少浇一点，爱也不能一下倒太多。","它长得慢，但它真的在长，我也学习一下。"],
+        after:["盆栽精神一点，我也顺便精神一点。","照顾它的时候，我会变得没有那么急。"] },
       { id:"music", name:"戴耳机听歌", group:"music", zone:"bed", pose:"pose-shy", scene:"room", skill:"music", xp:10, weight:7, item:"headphones", effects:{mood:11,inspiration:6,focus:-1,energy:2,satiety:-2},
-        lines:["这首歌一响，我就没那么绷着了。","我把声音调小，只留一点点给自己。","这句歌词有点像我。"],
-        after:["听完歌以后，心情被擦干净一点。","旋律还在脑袋里绕。"] },
+        lines:["这首歌一响，我就没那么紧绷了。","我把声音调小，只留一点点快乐给自己。","这句歌词有点像我，先偷偷认领一下。"],
+        after:["听完歌以后，心情像被擦干净了一小块。","旋律还在脑袋里绕，像小尾巴一样。"] },
       { id:"craft", name:"做纸艺小物", group:"craft", zone:"table", pose:"pose-draw", scene:"room", skill:"craft", xp:14, weight:6, item:"craft-box", effects:{inspiration:8,focus:5,mood:6,energy:-7,satiety:-3,cleanliness:-2},
-        lines:["我折慢一点，边要对齐。","这个小东西做出来应该会很可爱。","胶水别挤太多，之前翻车过。"],
-        after:["成品有点歪，但很像我做的。","十分钟折成了一个能留下来的东西。"] },
+        lines:["我折慢一点，边边要对齐，不然强迫症要报警。","这个小东西做出来应该会很可爱，我已经开始偏心了。","胶水别挤太多，上次翻车现场还历历在目。"],
+        after:["成品有点歪，但很有亲手做的灵魂。","十分钟折成了一个能留下来的东西，赚到。"] },
       { id:"yoga", name:"做瑜伽", group:"exercise", zone:"rug", pose:"pose-exercise", scene:"room", skill:"health", xp:12, weight:7, item:"yoga-mat", effects:{energy:-8,mood:8,focus:6,cleanliness:-3,satiety:-4},
-        lines:["吸气，吐气，先别想别的。","动作不用漂亮，别憋气就行。","我把背伸开一点。"],
-        after:["做完以后，心没那么皱了。","这一轮很安静，我喜欢。"] },
+        lines:["吸气，吐气，先把脑子里的弹幕关小点。","动作不用漂亮，别憋气，活着比较重要。","我把背伸开一点，像把自己从文件夹里拖出来。"],
+        after:["做完以后，心没那么皱了，像熨过一点。","这一轮很安静，我还蛮喜欢这种慢慢的感觉。"] },
       { id:"run", name:"出门慢跑", group:"outdoor-run", zone:"door", pose:"pose-run", scene:"outdoor", skill:"health", xp:15, weight:7, item:"running-shoes", effects:{energy:-15,mood:10,focus:4,cleanliness:-8,satiety:-6,inspiration:2},
-        lines:["我跑慢点，不逞强。","跑到路口就回来，你别走。","风吹到脸上，脑子会安静一点。"],
-        after:["跑完有点喘，但挺痛快。","我真的动起来了，这个要记账。"] },
+        lines:["我跑慢点，不逞强，能跑完就是胜利。","跑到路口就回来，你不许趁机消失。","风吹到脸上，脑子里的杂音会小一点。"],
+        after:["跑完有点喘，但很痛快，像把烦恼甩掉几步。","我真的动起来了，这个必须记一笔。"] },
       { id:"sprint", name:"短距离冲刺", group:"outdoor-run", zone:"door", pose:"pose-run", scene:"outdoor", skill:"health", xp:17, weight:4, item:"running-shoes", effects:{energy:-22,mood:8,focus:5,cleanliness:-10,satiety:-7},
-        lines:["我就冲一小段，不装高手。","三、二、一，跑！","你在我就不好意思半路停。"],
-        after:["腿有点软，但我刚刚真的很用力。","这一下冲得很痛快。"] },
+        lines:["我就冲一小段，不装高手，装高手容易腿软。","三二一，兔兔弹射起步！","你在我就不好意思半路停，这就是陪伴监督的力量。"],
+        after:["腿有点软，但刚刚那一下真的很用力。","这一下冲得很痛快，感觉灵魂都刷新了一秒。"] },
       { id:"bike", name:"骑单车兜一圈", group:"bike", zone:"door", pose:"pose-bike", scene:"outdoor", skill:"health", xp:16, weight:7, item:"bicycle", effects:{energy:-16,mood:11,inspiration:5,cleanliness:-7,satiety:-6},
-        lines:["我骑慢一点，风挺舒服的。","车铃很好听，我想再按一下。","路口转一圈就回来。"],
-        after:["骑完一圈，烦的东西被风带走一点。","单车真好，像把今天推远了一点。"] },
+        lines:["我骑慢一点，风挺舒服的，像在给脑子吹干。","车铃很好听，我想再按一下，叮一下也算快乐。","路口转一圈就回来，不乱跑，乖兔报备。"],
+        after:["骑完一圈，烦的东西被风带走一点。","单车真好，像把今天轻轻推远了一点。"] },
       { id:"bike-care", name:"检查单车", group:"bike-care", zone:"door", pose:"pose-tidy", scene:"room", skill:"tidying", xp:9, weight:5, item:"bicycle", effects:{focus:5,mood:3,cleanliness:-2,energy:-3,satiety:-2},
-        lines:["刹车、轮胎、铃铛，都看一下。","照顾工具也算照顾自己。","我把链条擦干净一点。"],
-        after:["检查完了，下次出门更安心。","我的小单车可靠多了。"] },
+        lines:["刹车、轮胎、铃铛，都检查一下，安全感自己给。","照顾工具也算照顾自己，这句话有点道理。","我把链条擦干净一点，它也辛苦了。"],
+        after:["检查完了，下次出门更安心。","我的小单车可靠多了，我也可靠一点点。"] },
       { id:"swim", name:"去游泳", group:"swim", zone:"door", pose:"pose-swim", scene:"water", skill:"health", xp:18, weight:6, item:"swim-gear", effects:{energy:-18,mood:11,cleanliness:3,focus:4,satiety:-7},
-        lines:["我先练换气，不装高手。","水里很安静，我会注意安全。","游累了我就停，真的。"],
-        after:["游完以后身体累，心倒是清爽。","水把烦躁冲走了一点。"] },
+        lines:["我先练换气，不装高手，水会识破我。","水里很安静，我会注意安全，你也别分心。","游累了我就停，真的，我不和泳池较劲。"],
+        after:["游完以后身体累，心倒是清爽了不少。","水把烦躁冲走了一点，像给心情洗了个澡。"] },
       { id:"jump-rope", name:"跳绳", group:"exercise", zone:"rug", pose:"pose-run", scene:"room", skill:"health", xp:15, weight:6, item:"jump-rope", effects:{energy:-16,mood:8,focus:5,cleanliness:-8,satiety:-6},
-        lines:["我数到一百，中间断了也继续。","绳子别打到脚，疼。","这个真的会出汗。"],
-        after:["跳完心跳很明显，我还挺得意。","汗出了，心情也通了。"] },
+        lines:["我数到一百，中间断了也继续，断了不算失败。","绳子别打到脚，疼是真的疼。","这个真的会出汗，兔兔发动机启动。"],
+        after:["跳完心跳很明显，我居然还有点得意。","汗出了，心情也通了，像堵车突然动了。"] },
       { id:"badminton", name:"打羽毛球", group:"ball", zone:"door", pose:"pose-run", scene:"outdoor", skill:"health", xp:16, weight:5, item:"badminton", effects:{energy:-17,mood:10,focus:6,cleanliness:-8,satiety:-6},
-        lines:["我努力接球，挥空也不许笑。","球飞起来的时候很轻，我也想轻一点。","这拍我一定碰到。"],
-        after:["接到球那一下真的很开心。","运动完累得很实在。"] },
+        lines:["我努力接球，挥空也不许笑，除非你笑得很温柔。","球飞起来的时候很轻，我也想轻一点。","这拍我一定碰到，碰到就算阶段性胜利。"],
+        after:["接到球那一下真的很开心，像小小中奖。","运动完累得很实在，烦恼都没力气说话了。"] },
       { id:"photo", name:"出门拍照", group:"photo", zone:"door", pose:"pose-shy", scene:"outdoor", skill:"drawing", xp:10, weight:6, item:"camera", effects:{inspiration:12,mood:8,energy:-9,cleanliness:-4,satiety:-4},
-        lines:["我去找一点好看的光。","如果拍到漂亮的云，我想给你看。","这条路以前没仔细看过。"],
-        after:["照片里留下了一小块今天。","我发现生活里其实有很多角落。"] },
+        lines:["我去找一点好看的光，找不到就拍可爱的角落。","如果拍到漂亮的云，我想立刻给你看。","这条路以前没仔细看过，原来它还挺会藏细节。"],
+        after:["照片里留下了一小块今天，证据确凿。","我发现生活里其实有很多角落，只是平时走太快了。"] },
       { id:"tea", name:"泡热茶", group:"drink", zone:"table", pose:"pose-eat", scene:"room", skill:"cooking", xp:6, weight:6, item:"tea-set", effects:{mood:8,focus:4,satiety:6,energy:2},
-        lines:["等水温降一点，不急。","茶香起来的时候，时间会慢一点。","我捧着杯子，就没那么慌。"],
-        after:["热茶下肚，心口暖了一下。","这一杯把我哄慢了。"] }
+        lines:["等水温降一点，不急，烫到舌头就太亏了。","茶香起来的时候，时间好像会慢一点。","我捧着杯子，就没那么慌了，手心先安静下来。"],
+        after:["热茶下肚，心口暖了一下。","这一杯把我哄慢了，暂时不和世界赛跑。"] }
     ];
 
     const shopItems = [
@@ -2126,7 +2140,7 @@
       days: {},
       versionHistory: [],
       localUpdatedAt: new Date().toISOString(),
-      line: "你先别切走，我看完这一页就给你汇报。",
+      line: "看书怎么这么无聊，不想看，但还是尽量先把十分钟看完吧",
       interrupted: false
     });
 
@@ -2171,6 +2185,7 @@
       reviewList: document.getElementById("reviewList"),
       modal: document.getElementById("modal"),
       closeModal: document.getElementById("closeModal"),
+      interruptLine: document.getElementById("interruptLine"),
       fullscreenButton: document.getElementById("fullscreenButton"),
       infoModal: document.getElementById("infoModal"),
       closeInfoModal: document.getElementById("closeInfoModal"),
@@ -2396,6 +2411,13 @@
       return arr[Math.floor(Math.random() * arr.length)];
     }
 
+    function showInterruptModal() {
+      if (els.interruptLine) {
+        els.interruptLine.textContent = `“${pick(INTERRUPT_LINES)}”`;
+      }
+      els.modal.classList.add("show");
+    }
+
     function beginRound(countStart = true, line) {
       const day = ensureToday();
       if (countStart) day.starts += 1;
@@ -2519,7 +2541,7 @@
       state.line = "你刚刚不见了，我就停下来了。没关系，回来就继续。";
       saveState();
       noticeOpen = true;
-      els.modal.classList.add("show");
+      showInterruptModal();
       render();
     }
 
@@ -2860,8 +2882,11 @@
     }
 
     function authRedirectUrl() {
-      if (location.protocol === "file:") return undefined;
-      return location.href.split("#")[0].split("?")[0];
+      if (location.protocol === "http:" || location.protocol === "https:") {
+        const cleanUrl = location.href.split("#")[0].split("?")[0];
+        if (cleanUrl.startsWith(PUBLIC_SITE_URL)) return cleanUrl;
+      }
+      return PUBLIC_SITE_URL;
     }
 
     function updateCloudButton() {
@@ -3076,7 +3101,7 @@
           <label class="login-label" for="loginEmail">邮箱
             <input class="text-input" id="loginEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
           </label>
-          <div class="sync-status" id="cloudStatus">${escapeHtml(location.protocol === "file:" ? "本地 file:// 可以编辑和备份；邮件登录建议发布后使用。" : cloudStatusText)}</div>
+          <div class="sync-status" id="cloudStatus">${escapeHtml(location.protocol === "file:" ? "本地预览可以编辑和备份；登录邮件会跳转到 Standby 正式站点。" : cloudStatusText)}</div>
         </div>
       `, [
         { label: "发送登录邮件", onClick: requestLoginLink }
@@ -3187,7 +3212,7 @@
       state.pendingAwayAt = null;
       saveState();
       noticeOpen = true;
-      els.modal.classList.add("show");
+      showInterruptModal();
     } else {
       beginRound(true, "你来了。那我开始做事，你别偷偷跑去别的 App。");
     }
